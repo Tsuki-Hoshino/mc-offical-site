@@ -1,0 +1,2 @@
+# 每天 03:17 删除一年前的历史指标。请按实际 PHP 与网站路径修改。
+17 3 * * * www-data /usr/bin/php /var/www/mc-official-site/website/api/cron/prune-history.php >> /var/log/mc-official-site-retention.log 2>&1

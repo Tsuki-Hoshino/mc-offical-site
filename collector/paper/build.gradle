@@ -1,0 +1,27 @@
+plugins {
+    id 'java-library'
+}
+
+base {
+    archivesName = 'mc-official-site-collector-paper-universal'
+}
+
+repositories {
+    maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+}
+
+dependencies {
+    compileOnly('org.spigotmc:spigot-api:1.14.4-R0.1-SNAPSHOT') {
+        exclude group: 'net.md-5', module: 'bungeecord-chat'
+    }
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 8
+}
+
+tasks.named('jar') {
+    from project(':core').sourceSets.main.output
+}

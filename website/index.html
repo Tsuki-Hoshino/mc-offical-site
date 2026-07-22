@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#f9a8d4">
+<meta name="description" content="生存服务器 Minecraft 服务器官网，提供实时状态、玩家统计。">
+<title>示例服务器 | Minecraft 服务器官网</title>
+<link rel="icon" type="image/png" href="/assets/server-icon.png">
+<link rel="stylesheet" href="./assets/site.css?v=20260723e">
+    <script src="/assets/lenis.min.js?v=1.3.25"></script>
+    <script src="/assets/site-config.js?v=20260723e"></script>
+    <script src="/assets/server-status.js?v=20260723e"></script>
+<script src="./assets/site.js?v=20260722u"></script>
+</head>
+<body class="home-page official-home">
+<header class="topbar"><div class="shell"><a class="brand" href="./">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="./" aria-current="page">首页</a><a href="./状态/">实时状态</a><a href="./统计数据/">玩家统计</a><a href="./配方/">配方</a><a href="./附魔计算/">附魔计算</a><a href="./经纬度/">经纬度</a></nav></div></header>
+<main class="shell">
+<section class="official-hero">
+  <div class="official-intro">
+    <div class="official-title"><img class="server-icon" src="./assets/server-icon.png" alt="服务器图标"><div><p class="official-label">MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET</p><h1>生存服务器</h1><p class="official-subtitle" id="home-motd">正在读取服务器 MOTD</p></div></div>
+    <div class="connect-box">
+      <div><span>服务器地址</span><strong>mc.example.com</strong></div>
+      <button id="copy-address" type="button">复制地址</button>
+    </div>
+  </div>
+  <div class="live-console" aria-live="polite">
+    <div class="live-console-head"><span>实时运行</span><strong class="server-state" id="server-state">读取中</strong></div>
+    <dl>
+      <div><dt>在线玩家</dt><dd id="online-count">-</dd></div>
+      <div><dt>在线假人</dt><dd id="bot-count">-</dd></div>
+      <div><dt>MSPT</dt><dd id="home-mspt">-</dd></div>
+      <div><dt>服务器时间</dt><dd id="server-clock">-</dd></div>
+    </dl>
+    <p class="live-updated">数据更新于 <span id="home-updated">-</span></p>
+  </div>
+</section>
+
+<section class="official-online" aria-labelledby="online-title">
+  <div><h2 id="online-title">当前在线</h2><p></p></div>
+  <div class="online-groups">
+    <div><span>玩家</span><strong id="online-players">读取中</strong></div>
+    <div><span>假人</span><strong id="online-bots">读取中</strong></div>
+  </div>
+</section>
+
+<section class="official-content" aria-labelledby="content-title">
+  <div class="content-heading"><h2 id="content-title">服务器内容</h2><p>状态与玩家统计</p></div>
+  <div class="official-grid">
+    <a class="official-link" href="./状态/"><span><strong>实时状态</strong><small>MSPT、资源占用与网络流量</small></span><b aria-hidden="true">→</b></a>
+    <a class="official-link" href="./统计数据/"><span><strong>玩家统计</strong><small>排行榜、汇总与原版详细统计</small></span><b aria-hidden="true">→</b></a>
+    <a class="official-link recipe-link" href="./配方/"><span><strong>配方搜索</strong><small>查询服务器合成配方</small></span><span class="official-recipes" aria-hidden="true"><img src="./配方/images/149-xekr__lazy_golden_carrot.png" alt=""><img src="./配方/images/148-xekr__lazy_golden_apple.png" alt=""><img src="./配方/images/167-xekr__lazy_lantern.png" alt=""><img src="./配方/images/120-xekr__lazy_compass.png" alt=""></span></a>
+    <a class="official-link" href="./附魔计算/"><span><strong>附魔计算</strong><small>计算铁砧合并顺序与经验消耗</small></span><b aria-hidden="true">→</b></a>
+    <a class="official-link" href="./经纬度/"><span><strong>经纬度</strong><small>登记机器位置并换算维度坐标</small></span><b aria-hidden="true">→</b></a>
+  </div>
+</section>
+</main>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<script>
+let clockOffset=null,skinUrls=new Map(),onlineSince=new Map();
+const text=(id,value)=>document.getElementById(id).textContent=value;
+const time=value=>{const date=new Date(value);return Number.isNaN(date.getTime())?'-':date.toLocaleString('zh-CN',{hour12:false})};
+const isFresh=record=>window.MCServerStatus.isOnline(record);
+function connectionDuration(value){
+  const startedAt=new Date(value).getTime();
+  if(!Number.isFinite(startedAt))return '在线时间未知';
+  let seconds=Math.max(0,Math.floor((Date.now()+(clockOffset||0)-startedAt)/1000));
+  const days=Math.floor(seconds/86400);seconds%=86400;
+  const hours=Math.floor(seconds/3600);seconds%=3600;
+  const minutes=Math.floor(seconds/60);seconds%=60;
+  return '在线 '+(days?days+'天 ':'')+(hours?hours+'小时 ':'')+minutes+'分 '+String(seconds).padStart(2,'0')+'秒';
+}
+function createHomeAvatar(name){
+  const avatar=document.createElement('span'),skinUrl=skinUrls.get(name.toLowerCase());
+  avatar.className='avatar home-online-avatar';
+  avatar.setAttribute('role','img');
+  avatar.setAttribute('aria-label',name);
+  if(skinUrl){avatar.classList.add('has-skin');avatar.style.setProperty('--skin','url('+skinUrl+')')}else{avatar.textContent=name.slice(0,1)}
+  return avatar;
+}
+function renderOnline(id,items,empty){
+  const list=document.getElementById(id);
+  list.className='home-online-list';
+  list.replaceChildren();
+  if(!items||!items.length){const item=document.createElement('span');item.className='home-online-empty';item.textContent=empty;list.append(item);return}
+  items.forEach(name=>{
+    const row=document.createElement('a'),info=document.createElement('span'),label=document.createElement('span'),elapsed=document.createElement('small'),startedAt=onlineSince.get(name.toLowerCase());
+    row.className='home-online-player';
+    row.href='./统计数据/玩家/?id='+encodeURIComponent(name);
+    info.className='home-online-info';
+    label.className='home-online-name';
+    label.textContent=name;
+    elapsed.className='online-duration';
+    if(startedAt){elapsed.dataset.onlineSince=startedAt;elapsed.textContent=connectionDuration(startedAt)}else{elapsed.textContent='在线时间未知'}
+    info.append(label,elapsed);
+    row.append(createHomeAvatar(name),info);
+    list.append(row);
+  });
+}
+function updateConnectionTimes(){document.querySelectorAll('[data-online-since]').forEach(element=>element.textContent=connectionDuration(element.dataset.onlineSince))}
+function updateClock(){if(clockOffset!==null)text('server-clock',new Date(Date.now()+clockOffset).toLocaleString('zh-CN',{hour12:false}))}
+function showOffline(){
+  const state=document.getElementById('server-state');
+  state.textContent='服务器已离线';
+  state.className='server-state offline';
+  clockOffset=null;onlineSince=new Map();
+  ['online-count','bot-count','home-mspt','server-clock'].forEach(id=>text(id,'服务器已离线'));
+  text('home-motd','服务器已离线');
+  text('home-updated','服务器已离线');
+  renderOnline('online-players',[],'服务器已离线');
+  renderOnline('online-bots',[],'服务器已离线');
+}
+async function refresh(){
+  try{
+    const response=await fetch('./api/latest.php?type=status',{cache:'no-store'});
+    if(!response.ok)throw new Error(response.status);
+    const record=await response.json(),data=record.payload||{},runtime=data.runtime||{},state=document.getElementById('server-state');
+    if(!isFresh(record)){showOffline();return}
+    state.textContent=data.online?'服务器在线':'服务器离线';
+    state.className='server-state '+(data.online?'online':'offline');
+    text('online-count',data.online_count||0);
+    text('bot-count',data.bot_count||0);
+    text('home-mspt',runtime.mspt==null?'-':Number(runtime.mspt).toFixed(1)+' ms');
+    text('home-motd','MOTD='+(data.motd||'服务器官网'));
+    text('home-updated',time(record.received_at));
+    skinUrls=new Map(Object.entries(data.skin_urls||{}).map(([name,url])=>[name.toLowerCase(),url]));
+    onlineSince=new Map(Object.entries(data.online_since||{}).map(([name,value])=>[name.toLowerCase(),value]));
+    renderOnline('online-players',data.online_players,'暂无玩家在线');
+    renderOnline('online-bots',data.bots,'暂无假人在线');
+    const serverTime=new Date(runtime.server_time);
+    if(!Number.isNaN(serverTime.getTime())){clockOffset=serverTime.getTime()-Date.now();updateClock();updateConnectionTimes()}
+  }catch(error){
+    showOffline();
+  }
+}
+document.querySelector('main').append(document.querySelector('.official-online'));
+document.getElementById('copy-address').addEventListener('click',async event=>{
+  const button=event.currentTarget,original=button.textContent;
+  try{await navigator.clipboard.writeText((window.MCSiteConfig&&window.MCSiteConfig.serverAddress)||'mc.example.com');button.textContent='已复制'}catch(error){button.textContent='复制失败'}
+  setTimeout(()=>button.textContent=original,1500);
+});
+refresh();setInterval(refresh,1000);setInterval(()=>{updateClock();updateConnectionTimes()},1000);
+</script>
+</body>
+</html>

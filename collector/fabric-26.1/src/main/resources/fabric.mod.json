@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "mc_official_site_collector",
+  "version": "${version}",
+  "name": "MC Official Site Collector",
+  "description": "Uploads real-time server status and vanilla player statistics to a configured website.",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "com.example.mcsite.fabric.FabricCollectorMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": ">=26.1 <=26.1.2",
+    "fabric-api": "*",
+    "java": ">=25"
+  }
+}

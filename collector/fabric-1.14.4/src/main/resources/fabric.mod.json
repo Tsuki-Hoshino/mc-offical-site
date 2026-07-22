@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "mc_official_site_collector",
+  "version": "${version}",
+  "name": "MC Official Site Collector",
+  "description": "将服务器实时状态与原版玩家统计安全同步到网站。",
+  "authors": ["示例服务器"],
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.example.mcsite.fabric.FabricCollectorMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric": "*",
+    "minecraft": "1.14.4",
+    "java": ">=8"
+  }
+}

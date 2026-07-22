@@ -1,0 +1,33 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version '1.17-SNAPSHOT'
+}
+
+base {
+    archivesName = 'mc-official-site-collector-fabric-1.18.2'
+}
+
+sourceSets.main.java.srcDir '../fabric-common/src/main/java'
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.18.2'
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.19.3'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.77.0+1.18.2'
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+tasks.named('jar') {
+    from project(':core').sourceSets.main.output
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}

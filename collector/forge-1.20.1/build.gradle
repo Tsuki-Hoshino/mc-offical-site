@@ -1,0 +1,32 @@
+plugins {
+    id 'java-library'
+}
+
+base {
+    archivesName = 'mc-official-site-collector-forge-1.20.1'
+}
+
+sourceSets.main.java.srcDir '../forge-legacy-common/src/main/java'
+
+repositories {
+    maven { url = 'https://maven.minecraftforge.net/' }
+}
+
+dependencies {
+    compileOnly 'net.minecraftforge:forge:1.20.1-47.4.22:universal'
+    compileOnly 'net.minecraftforge:fmlcore:1.20.1-47.4.22'
+    compileOnly 'net.minecraftforge:fmlloader:1.20.1-47.4.22'
+    compileOnly 'net.minecraftforge:javafmllanguage:1.20.1-47.4.22'
+    compileOnly 'net.minecraftforge:eventbus:6.2.33'
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+tasks.named('jar') {
+    from project(':core').sourceSets.main.output
+    manifest { attributes 'Implementation-Version': project.version }
+}

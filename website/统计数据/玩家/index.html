@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#f9a8d4">
+<meta name="description" content="玩家原版统计详细信息。"><title>玩家详细统计 | 示例服务器</title>
+<link rel="icon" type="image/png" href="/assets/server-icon.png">
+
+<link rel="stylesheet" href="../../assets/site.css?v=20260723e">
+    <script src="/assets/lenis.min.js?v=1.3.25"></script>
+    <script src="/assets/site-config.js?v=20260723e"></script>
+<script src="../../assets/site.js?v=20260722u"></script>
+</head>
+<body class="player-page">
+<header class="topbar"><div class="shell"><a class="brand" href="../../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../../">首页</a><a href="../../状态/">实时状态</a><a href="../" aria-current="page">玩家统计</a><a href="../../配方/">配方</a><a href="../../附魔计算/">附魔计算</a><a href="../../经纬度/">经纬度</a></nav></div></header>
+<main class="shell"><a class="back" href="../">← 返回统计汇总</a><div id="content"><div class="empty">正在读取玩家统计</div></div></main>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<script>
+const categoryLabels={'minecraft:mined':'挖掘','minecraft:crafted':'合成','minecraft:used':'使用','minecraft:broken':'损坏','minecraft:picked_up':'拾取','minecraft:dropped':'丢弃','minecraft:killed':'击杀','minecraft:killed_by':'被击杀','minecraft:custom':'自定义'};
+const categoryOrder=Object.keys(categoryLabels);
+const tickStats=new Set(['play_time','total_world_time','time_since_death','time_since_rest','sneak_time']);
+let player=null,translations={},activeCategory='',query='';
+function number(value){return new Intl.NumberFormat('zh-CN').format(Number(value)||0)}
+function duration(seconds){seconds=Math.floor(Number(seconds)||0);const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),minutes=Math.floor(seconds%3600/60);if(days)return days+'天 '+hours+'小时';if(hours)return hours+'小时 '+minutes+'分';return minutes+'分钟'}
+function playTime(ticks){return duration((Number(ticks)||0)/20)}
+function distance(cm){const meters=(Number(cm)||0)/100;return meters>=1000?(meters/1000).toFixed(1)+' 千米':Math.round(meters)+' 米'}
+function idParts(id){const parts=id.split(':');return{namespace:parts.length>1?parts[0]:'minecraft',name:parts.length>1?parts.slice(1).join(':'):parts[0]}}
+function translatedName(category,id){const p=idParts(id),keys=[];if(category==='minecraft:custom')keys.push('stat.'+p.namespace+'.'+p.name);else if(category==='minecraft:killed'||category==='minecraft:killed_by')keys.push('entity.'+p.namespace+'.'+p.name);else keys.push('block.'+p.namespace+'.'+p.name,'item.'+p.namespace+'.'+p.name,'entity.'+p.namespace+'.'+p.name);for(const key of keys)if(translations[key])return translations[key];return p.name.replaceAll('_',' ')}
+function statValue(category,id,value){const name=idParts(id).name;if(category==='minecraft:custom'){if(tickStats.has(name))return playTime(value);if(name.endsWith('_one_cm'))return distance(value);if(name.startsWith('damage_'))return (Number(value)/10).toFixed(1)}return number(value)}
+function createMetric(label,value){const box=document.createElement('div');box.className='metric';const l=document.createElement('span'),v=document.createElement('strong');l.textContent=label;v.textContent=value;box.append(l,v);return box}
+function renderCategory(){const body=document.getElementById('stat-body');body.replaceChildren();const source=(player.categories&&player.categories[activeCategory])||{};const rows=Object.entries(source).map(([id,value])=>({id,value,label:translatedName(activeCategory,id)})).filter(item=>!query||item.label.toLowerCase().includes(query)||item.id.toLowerCase().includes(query)).sort((a,b)=>Number(b.value)-Number(a.value));if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=3;td.className='empty';td.textContent=query?'没有匹配项目':'这一分类暂无数据';tr.append(td);body.append(tr);return}for(const item of rows){const tr=document.createElement('tr'),name=document.createElement('td'),value=document.createElement('td'),raw=document.createElement('td');name.textContent=item.label;value.className='value';value.textContent=statValue(activeCategory,item.id,item.value);raw.className='raw';raw.textContent=item.id;tr.append(name,value,raw);body.append(tr)}}
+function buildPage(){const content=document.getElementById('content');content.replaceChildren();const head=document.createElement('div');head.className='player-head';const avatar=document.createElement('span');avatar.className='avatar';avatar.setAttribute('role','img');avatar.setAttribute('aria-label',player.name);if(player.skin_url){avatar.classList.add('has-skin');avatar.style.setProperty('--skin','url("'+player.skin_url+'")')}else{avatar.textContent=player.name.slice(0,1)}const titleBox=document.createElement('div'),title=document.createElement('h1'),note=document.createElement('p');title.textContent=player.name;note.textContent='原版统计数据版本 '+(player.data_version||'-');titleBox.append(title,note);head.append(avatar,titleBox);const summary=document.createElement('div');summary.className='summary';summary.append(createMetric('游戏时长',playTime(player.play_time)),createMetric('挖掘方块',number(player.mined_blocks)),createMetric('生物击杀',number(player.mob_kills)),createMetric('死亡次数',number(player.deaths)),createMetric('玩家击杀',number(player.player_kills)),createMetric('移动距离',distance(player.distance_cm)),createMetric('跳跃次数',number(player.jumps)));const details=document.createElement('section');details.className='details';details.innerHTML='<div class="detail-head"><h2>原版详细统计</h2><input class="search" id="search" type="search" placeholder="搜索项目或原始 ID"></div><div class="categories" id="categories"></div><div class="table-wrap"><table><thead><tr><th>项目</th><th style="text-align:right">数值</th><th>原始 ID</th></tr></thead><tbody id="stat-body"></tbody></table></div>';content.append(head,summary,details);const available=categoryOrder.filter(key=>player.categories&&player.categories[key]);for(const key of Object.keys(player.categories||{}))if(!available.includes(key))available.push(key);activeCategory=available[0]||'';const tabs=document.getElementById('categories');for(const key of available){const button=document.createElement('button');button.type='button';button.dataset.category=key;button.textContent=(categoryLabels[key]||key)+' '+Object.keys(player.categories[key]||{}).length;button.classList.toggle('active',key===activeCategory);tabs.append(button)}tabs.addEventListener('click',event=>{const button=event.target.closest('[data-category]');if(!button)return;activeCategory=button.dataset.category;tabs.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));renderCategory()});document.getElementById('search').addEventListener('input',event=>{query=event.target.value.trim().toLowerCase();renderCategory()});renderCategory()}
+async function init(){try{const id=new URLSearchParams(location.search).get('id')||'';const [statsResponse,langResponse]=await Promise.all([fetch('../../api/latest.php?type=stats',{cache:'no-store'}),fetch('../assets/zh_cn.json',{cache:'force-cache'})]);if(!statsResponse.ok)throw new Error('stats');const record=await statsResponse.json();if(langResponse.ok)translations=await langResponse.json();player=(record.payload&&record.payload.items||[]).find(item=>item.name.toLowerCase()===id.toLowerCase());if(!player)throw new Error('player');document.title=player.name+' 的原版统计 | '+((window.MCSiteConfig&&window.MCSiteConfig.siteName)||'Minecraft 服务器');buildPage()}catch(error){document.getElementById('content').innerHTML='<div class="error">没有找到该玩家的原版统计数据。</div>'}}
+init();
+</script>
+</body></html>

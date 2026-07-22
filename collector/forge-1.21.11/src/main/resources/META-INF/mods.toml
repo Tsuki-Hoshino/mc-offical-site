@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[61,)"
+license="MIT"
+
+[[mods]]
+modId="mc_official_site_collector"
+version="${file.jarVersion}"
+displayName="MC Official Site Collector"
+authors="示例服务器"
+description='''将服务器实时状态与原版玩家统计安全同步到网站。'''
+
+[[dependencies.mc_official_site_collector]]
+modId="forge"
+mandatory=true
+versionRange="[61,)"
+ordering="NONE"
+side="SERVER"
+
+[[dependencies.mc_official_site_collector]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.21.11]"
+ordering="NONE"
+side="SERVER"

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#f9a8d4">
+<meta name="description" content="生存服务器 玩家统计与实时在线状态。">
+<title>玩家统计 | 示例服务器</title>
+<link rel="icon" type="image/png" href="/assets/server-icon.png">
+
+<link rel="stylesheet" href="../assets/site.css?v=20260723e">
+    <script src="/assets/lenis.min.js?v=1.3.25"></script>
+    <script src="/assets/site-config.js?v=20260723e"></script>
+<script src="../assets/site.js?v=20260722u"></script>
+</head>
+<body class="stats-page">
+<header class="topbar"><div class="shell topbar-inner"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="./" aria-current="page">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a></nav></div></header>
+<main class="shell">
+<div class="page-heading"><h1>玩家统计</h1><p class="updated" id="stats-updated">正在读取统计数据</p></div>
+<section class="ranking" aria-labelledby="ranking-title">
+<div class="section-head"><h2 id="ranking-title">排行榜</h2><div class="segments" id="metric-tabs" aria-label="排行榜指标"><button type="button" class="active" data-metric="play_time">游玩时长</button><button type="button" data-metric="mined_blocks">挖掘方块</button><button type="button" data-metric="mob_kills">生物击杀</button><button type="button" data-metric="distance_cm">移动距离</button><button type="button" data-metric="jumps">跳跃次数</button><button type="button" data-metric="deaths">死亡次数</button></div></div>
+<div class="podium" id="podium"><div class="empty">正在载入排行榜</div></div>
+</section>
+<section class="stats-section" aria-labelledby="table-title"><div class="section-head"><h2 id="table-title">全部数据</h2></div><div class="table-wrap"><table><thead><tr><th>玩家</th><th><button class="sort-button active" type="button" data-sort="play_time">游玩时长 ↓</button></th><th><button class="sort-button" type="button" data-sort="mined_blocks">挖掘方块</button></th><th><button class="sort-button" type="button" data-sort="mob_kills">生物击杀</button></th><th><button class="sort-button" type="button" data-sort="player_kills">玩家击杀</button></th><th><button class="sort-button" type="button" data-sort="distance_cm">移动距离</button></th><th><button class="sort-button" type="button" data-sort="jumps">跳跃次数</button></th><th><button class="sort-button" type="button" data-sort="deaths">死亡次数</button></th></tr></thead><tbody id="stats-body"><tr><td colspan="8" class="empty">正在载入玩家数据</td></tr></tbody></table></div></section>
+<section class="tools" aria-labelledby="tools-title"><h2 id="tools-title">服务器工具</h2><div class="tool-links"></div></section>
+</main>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<script>
+const apiBase='../api/latest.php?type=';
+const metrics={play_time:{format:formatPlayTime},mined_blocks:{format:formatNumber},mob_kills:{format:formatNumber},player_kills:{format:formatNumber},distance_cm:{format:formatDistance},jumps:{format:formatNumber},deaths:{format:formatNumber}};
+let players=[],rankingMetric='play_time',sortKey='play_time',sortDirection=-1;
+function formatNumber(value){return new Intl.NumberFormat('zh-CN').format(Number(value)||0)}
+function formatPlayTime(ticks){const totalMinutes=Math.floor((Number(ticks)||0)/1200),days=Math.floor(totalMinutes/1440),hours=Math.floor(totalMinutes%1440/60),minutes=totalMinutes%60;if(days)return days+'天 '+hours+'小时';if(hours)return hours+'小时 '+minutes+'分';return minutes+'分钟'}
+function formatDistance(cm){const meters=(Number(cm)||0)/100;return meters>=1000?(meters/1000).toFixed(1)+' 千米':Math.round(meters)+' 米'}
+function formatTime(value){if(!value)return '-';const date=new Date(value);if(Number.isNaN(date.getTime()))return '-';return date.toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+async function loadJson(type){const response=await fetch(apiBase+encodeURIComponent(type),{cache:'no-store'});if(!response.ok)throw new Error(type+': '+response.status);return response.json()}
+function createAvatar(player,size){const head=document.createElement('span');head.className='avatar';head.style.setProperty('--size',size+'px');head.setAttribute('role','img');head.setAttribute('aria-label',player.name);if(player.skin_url){head.classList.add('has-skin');head.style.setProperty('--skin','url("'+player.skin_url+'")')}else{head.textContent=player.name.slice(0,1)}return head}
+function renderRanking(){const podium=document.getElementById('podium');podium.replaceChildren();const sorted=players.slice().sort(function(a,b){return(Number(b[rankingMetric])||0)-(Number(a[rankingMetric])||0)}).slice(0,3);if(!sorted.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='暂无玩家统计';podium.append(empty);return}sorted.forEach(function(player,index){const card=document.createElement('article');card.className='rank-card';const rank=document.createElement('span');rank.className='rank-number';rank.textContent=String(index+1);const info=document.createElement('div'),name=document.createElement('a'),value=document.createElement('span');name.className='rank-name';name.textContent=player.name;name.href='./%E7%8E%A9%E5%AE%B6/?id='+encodeURIComponent(player.name);value.className='rank-value';value.textContent=metrics[rankingMetric].format(player[rankingMetric]);info.append(name,value);card.append(rank,createAvatar(player,48),info);podium.append(card)})}
+function renderTable(){const body=document.getElementById('stats-body');body.replaceChildren();const sorted=players.slice().sort(function(a,b){const result=(Number(a[sortKey])||0)-(Number(b[sortKey])||0);return result*sortDirection||a.name.localeCompare(b.name,'zh-CN')});if(!sorted.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=8;cell.className='empty';cell.textContent='暂无玩家统计';row.append(cell);body.append(row);return}sorted.forEach(function(player){const row=document.createElement('tr'),playerCell=document.createElement('td'),box=document.createElement('div'),name=document.createElement('a');box.className='player-cell';name.textContent=player.name;name.href='./%E7%8E%A9%E5%AE%B6/?id='+encodeURIComponent(player.name);box.append(createAvatar(player,32),name);playerCell.append(box);row.append(playerCell);['play_time','mined_blocks','mob_kills','player_kills','distance_cm','jumps','deaths'].forEach(function(key){const cell=document.createElement('td');cell.textContent=metrics[key].format(player[key]);row.append(cell)});body.append(row)})}
+function updateSortButtons(){document.querySelectorAll('[data-sort]').forEach(function(button){const active=button.dataset.sort===sortKey;button.classList.toggle('active',active);const label=button.textContent.replace(/ [↓↑]$/,'');button.textContent=active?label+(sortDirection===-1?' ↓':' ↑'):label})}
+async function refresh(){try{const statsRecord=await loadJson('stats'),stats=statsRecord.payload||{};players=Array.isArray(stats.items)?stats.items:[];document.getElementById('stats-updated').textContent=players.length+' \u540d\u73a9\u5bb6 \u00b7 \u66f4\u65b0\u4e8e '+formatTime(stats.generated_at||statsRecord.received_at);renderRanking();renderTable()}catch(error){document.getElementById('stats-updated').textContent='\u7edf\u8ba1\u6570\u636e\u8bfb\u53d6\u5931\u8d25'}}document.getElementById('metric-tabs').addEventListener('click',function(event){const button=event.target.closest('[data-metric]');if(!button)return;rankingMetric=button.dataset.metric;document.querySelectorAll('[data-metric]').forEach(function(item){item.classList.toggle('active',item===button)});renderRanking()});
+document.querySelectorAll('[data-sort]').forEach(function(button){button.addEventListener('click',function(){const nextKey=button.dataset.sort;if(sortKey===nextKey)sortDirection*=-1;else{sortKey=nextKey;sortDirection=-1}updateSortButtons();renderTable()})});
+refresh();setInterval(refresh,10000);
+</script>
+</body>
+</html>

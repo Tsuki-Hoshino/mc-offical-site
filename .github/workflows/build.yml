@@ -1,0 +1,65 @@
+name: 构建采集器
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - fabric-1.14.4
+          - fabric-1.16.5
+          - fabric-1.18.2
+          - fabric-1.20.1
+          - fabric-1.21.1
+          - fabric-1.21.11
+          - fabric-26.1
+          - forge-1.14.4
+          - forge-1.16.5
+          - forge-1.18.2
+          - forge-1.20.1
+          - forge-1.21.1
+          - forge-1.21.11
+          - forge-26.1
+          - paper
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: 授予 Wrapper 执行权限
+        run: chmod +x collector/gradlew
+
+      - name: 运行核心测试并构建
+        run: >-
+          ./collector/gradlew
+          -p collector
+          "-PonlyProject=${{ matrix.module }}"
+          :core:test
+          ":${{ matrix.module }}:build"
+          --stacktrace
+
+      - name: 上传 JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: mc-official-site-collector-${{ matrix.module }}
+          path: collector/${{ matrix.module }}/build/libs/*.jar
+          if-no-files-found: error

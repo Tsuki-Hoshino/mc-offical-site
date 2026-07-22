@@ -1,0 +1,22 @@
+[endpoint]
+site_url = "https://mc.example.com"
+token = ""
+
+[timing]
+# 1 表示每个 Game Tick 采样一次，网络上传仍按 upload_interval_seconds 合并发送。
+sample_interval_ticks = 1
+upload_interval_seconds = 1
+stats_scan_interval_seconds = 1
+
+[features]
+sync_status = true
+sync_player_stats = true
+collect_network = true
+
+[fake_players]
+fake_class_keywords = "fake,carpet"
+fake_display_prefixes = "假的"
+
+[http]
+connect_timeout_millis = 5000
+read_timeout_millis = 8000

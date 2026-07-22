@@ -1,0 +1,7 @@
+name: MCOfficialSiteCollector
+version: 1.0.0
+main: com.example.mcsite.paper.PaperCollectorPlugin
+api-version: '1.14'
+load: STARTUP
+authors: ["TsukiHoshino & codex-gpt"]
+description: 将服务器实时状态与原版玩家统计安全同步到网站。

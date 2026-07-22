@@ -1,0 +1,29 @@
+.status-page .telemetry-origin {
+    min-width: 260px;
+    display: grid;
+    gap: 3px;
+}
+.status-page .telemetry-origin strong {
+    font-size: 12px;
+}
+.status-page .telemetry-origin span {
+    color: var(--muted);
+    font-size: 11px;
+}
+.status-page.server-offline .history-card {
+    pointer-events: none;
+    cursor: default;
+}
+.status-page.server-offline .history-card .mini-chart {
+    display: none;
+}
+.history-meta {
+    text-align: right;
+}
+.history-meta p,
+.history-meta small {
+    display: block;
+}
+.history-meta small {
+    margin-top: 3px;
+}

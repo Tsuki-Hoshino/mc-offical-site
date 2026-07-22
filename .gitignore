@@ -1,0 +1,11 @@
+.gradle/
+**/build/
+website/config/sync.php
+website/config/database.php
+website/data/
+*.log
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+builds/

@@ -1,0 +1,8 @@
+<?php
+declare(strict_types=1);
+
+return [
+    'token' => getenv('MC_SYNC_TOKEN') ?: 'change-this-token-before-deploy',
+    'allowed_types' => ['status', 'stats'],
+    'max_bytes' => 33554432,
+];

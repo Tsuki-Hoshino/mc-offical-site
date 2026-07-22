@@ -1,0 +1,37 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'mc-site-collector'
+include 'core'
+
+def modules = [
+    'fabric-1.14.4',
+    'fabric-1.16.5',
+    'fabric-1.18.2',
+    'fabric-1.20.1',
+    'fabric-1.21.1',
+    'fabric-1.21.11',
+    'fabric-26.1',
+    'forge-1.14.4',
+    'forge-1.16.5',
+    'forge-1.18.2',
+    'forge-1.20.1',
+    'forge-1.21.1',
+    'forge-1.21.11',
+    'forge-26.1',
+    'paper'
+]
+def selected = gradle.startParameter.projectProperties['onlyProject']
+if (selected) {
+    if (!modules.contains(selected)) {
+        throw new GradleException("Unknown onlyProject: " + selected)
+    }
+    include selected
+} else {
+    modules.each { include it }
+}
