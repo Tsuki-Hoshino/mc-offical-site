@@ -12,6 +12,7 @@
 
     let progress = null;
     let loadingLayer = null;
+    let backToTop = null;
     let progressTimer = 0;
     let navigating = false;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -47,6 +48,32 @@
             loadingLayer.innerHTML = '<span>少女祈祷中...</span>';
             root.appendChild(loadingLayer);
         }
+        if (!backToTop) {
+            backToTop = document.createElement('button');
+            backToTop.className = 'site-back-to-top';
+            backToTop.type = 'button';
+            backToTop.title = '回到顶部';
+            backToTop.setAttribute('aria-label', '回到顶部');
+            backToTop.setAttribute('aria-hidden', 'true');
+            backToTop.tabIndex = -1;
+            backToTop.textContent = '↑';
+            nativeAddEventListener.call(backToTop, 'click', function () {
+                if (smoothScroll) {
+                    smoothScroll.scrollTo(0, { force: true });
+                } else {
+                    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+                }
+            });
+            root.appendChild(backToTop);
+        }
+    }
+
+    function updateBackToTop() {
+        ensureChrome();
+        const visible = window.scrollY > 320;
+        backToTop.classList.toggle('visible', visible);
+        backToTop.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        backToTop.tabIndex = visible ? 0 : -1;
     }
 
     function startProgress() {
@@ -160,6 +187,7 @@
             } else {
                 window.scrollTo(0, 0);
             }
+            updateBackToTop();
             await executePageScripts(nextDocument, url);
             finishProgress();
             navigating = false;
@@ -170,7 +198,10 @@
 
     root.classList.add('site-motion');
     ensureChrome();
+    updateBackToTop();
     startProgress();
+
+    nativeAddEventListener.call(window, 'scroll', updateBackToTop, { passive: true });
 
     nativeAddEventListener.call(document, 'click', function (event) {
         if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
@@ -201,6 +232,7 @@
     nativeAddEventListener.call(window, 'pageshow', function () {
         navigating = false;
         document.body.classList.remove('site-page-leaving');
+        updateBackToTop();
         finishProgress();
     });
 

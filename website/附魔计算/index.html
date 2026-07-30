@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f9a8d4">
+  <title>附魔顺序计算器 | 示例服务器</title>
+  <link rel="stylesheet" href="../assets/site.css?v=20260731a">
+    <script src="/assets/lenis.min.js?v=1.3.25"></script>
+    <script src="/assets/site-config.php?v=20260724a"></script>
+    <script src="../assets/site.js?v=20260731a"></script>
+</head>
+<body class="enchant-page">
+  <header class="topbar"><div class="shell"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="./" aria-current="page">附魔计算</a><a href="../经纬度/">经纬度</a><a href="../计划表/">计划表</a></nav></div></header>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div>
+          <h1>附魔顺序计算器</h1>
+          <div class="sub">基于 Enchants Order 算法，离线 HTML 版本</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="copyResult">复制结果</button>
+        <button class="ghost" id="clearAll">清空</button>
+        <button class="primary" id="calculate">计算顺序</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>附魔设置</h2>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label for="itemSelect">物品</label>
+            <select id="itemSelect"></select>
+            <div class="hint">选择物品后，只显示可用于该物品的附魔。</div>
+          </div>
+
+          <div class="level-row">
+            <div class="field">
+              <label for="enchantSelect">附魔</label>
+              <select id="enchantSelect"></select>
+            </div>
+            <div class="field">
+              <label for="levelInput">等级</label>
+              <input id="levelInput" type="number" min="1" value="1">
+            </div>
+            <div class="field">
+              <label for="penaltyInput">初始惩罚</label>
+              <input id="penaltyInput" type="number" min="0" value="0">
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="addEnchant" class="primary">添加附魔</button>
+            <button id="maxLevel" class="ghost">最高级</button>
+          </div>
+          <div class="hint" id="compatHint"></div>
+
+          <div class="field" style="margin-top: 18px;">
+            <label>预设</label>
+            <div class="preset-grid" id="presets"></div>
+          </div>
+
+          <div class="field" style="margin-top: 18px;">
+            <label>已选择</label>
+            <div class="wanted" id="wantedList"></div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>计算结果</h2>
+          <div class="chips" id="statusChips"></div>
+        </div>
+        <div class="panel-body">
+          <div class="summary">
+            <div class="stat"><div class="k">最终惩罚</div><div class="v" id="penaltyOut">-</div></div>
+            <div class="stat"><div class="k">最高单次等级</div><div class="v" id="maxLevelOut">-</div></div>
+            <div class="stat"><div class="k">总等级花费</div><div class="v" id="totalLevelOut">-</div></div>
+            <div class="stat"><div class="k">总经验值</div><div class="v" id="totalXpOut">-</div></div>
+          </div>
+          <div class="steps" id="steps"></div>
+          <div class="footer-note">提示：每一步表示先把这些附魔书合并成一本，再把该书按步骤顺序打到目标物品上。</div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+
+  <script>
+    const ENCHANTS = {"Aqua Affinity":{"levelMax":1,"weight":2,"items":["Helmet","Turtle Shell"]},"Bane of Arthropods":{"levelMax":5,"weight":1,"incompatible":["Cleaving","Smite","Sharpness","Impaling","Breach","Density"],"items":["Sword","Axe","Mace","Spear"]},"Blast Protection":{"levelMax":4,"weight":2,"incompatible":["Fire Protection","Protection","Projectile Protection"],"items":["Helmet","Chestplate","Leggings","Boots","Turtle Shell"]},"Breach":{"levelMax":4,"weight":2,"incompatible":["Sharpness","Bane of Arthropods","Smite","Impaling","Density"],"items":["Mace"]},"Channeling":{"levelMax":1,"weight":4,"incompatible":["Riptide"],"items":["Trident"]},"Cleaving":{"hidden":true,"levelMax":3,"weight":2,"incompatible":["Sharpness","Bane of Arthropods","Smite"],"items":["Axe"]},"Curse of Binding":{"hidden":true,"levelMax":1,"weight":4,"items":["Helmet","Chestplate","Leggings","Boots","Elytra","Pumpkin","Head","Turtle Shell"]},"Curse of Vanishing":{"hidden":true,"levelMax":1,"weight":4,"items":["Helmet","Chestplate","Leggings","Boots","PickAxe","Shovel","Axe","Sword","Hoe","Fishing Rod","Bow","Shears","Flint and Steel","Compass","Recovery Compass","Carrot on a Stick","Warped Fungus on a Stick","Brush","Shield","Elytra","Pumpkin","Head","Trident","Turtle Shell","Crossbow","Mace","Spear"]},"Density":{"levelMax":5,"weight":1,"incompatible":["Sharpness","Bane of Arthropods","Smite","Impaling","Breach"],"items":["Mace"]},"Depth Strider":{"levelMax":3,"weight":2,"incompatible":["Frost Walker"],"items":["Boots"]},"Efficiency":{"levelMax":5,"weight":1,"items":["PickAxe","Shovel","Axe","Hoe","Shears"]},"Feather Falling":{"levelMax":4,"weight":1,"items":["Boots"]},"Fire Aspect":{"levelMax":2,"weight":2,"items":["Sword","Mace","Spear"]},"Fire Protection":{"levelMax":4,"weight":1,"incompatible":["Blast Protection","Protection","Projectile Protection"],"items":["Helmet","Chestplate","Leggings","Boots","Turtle Shell"]},"Flame":{"levelMax":1,"weight":2,"items":["Bow"]},"Fortune":{"levelMax":3,"weight":2,"incompatible":["Silk Touch"],"items":["PickAxe","Shovel","Axe","Hoe"]},"Frost Walker":{"levelMax":2,"weight":2,"incompatible":["Depth Strider"],"items":["Boots"]},"Impaling":{"levelMax":5,"weight":2,"incompatible":["Sharpness","Bane of Arthropods","Smite","Breach","Density"],"items":["Trident"]},"Infinity":{"levelMax":1,"weight":4,"incompatible":["Mending"],"items":["Bow"]},"Knockback":{"levelMax":2,"weight":1,"items":["Sword","Spear"]},"Looting":{"levelMax":3,"weight":2,"items":["Sword","Spear"]},"Loyalty":{"levelMax":3,"weight":1,"incompatible":["Riptide"],"items":["Trident"]},"Luck of the Sea":{"levelMax":3,"weight":2,"items":["Fishing Rod"]},"Lunge":{"levelMax":3,"weight":1,"items":["Spear"]},"Lure":{"levelMax":3,"weight":2,"items":["Fishing Rod"]},"Mending":{"levelMax":1,"weight":2,"incompatible":["Infinity"],"items":["Helmet","Chestplate","Leggings","Boots","PickAxe","Shovel","Axe","Sword","Hoe","Fishing Rod","Bow","Shears","Flint and Steel","Compass","Carrot on a Stick","Warped Fungus on a Stick","Brush","Shield","Elytra","Trident","Turtle Shell","Crossbow","Mace","Spear"]},"Multishot":{"levelMax":1,"weight":2,"incompatible":["Piercing"],"items":["Crossbow"]},"Piercing":{"levelMax":4,"weight":1,"incompatible":["Multishot"],"items":["Crossbow"]},"Power":{"levelMax":5,"weight":1,"items":["Bow"]},"Projectile Protection":{"levelMax":4,"weight":1,"incompatible":["Protection","Blast Protection","Fire Protection"],"items":["Helmet","Chestplate","Leggings","Boots","Turtle Shell"]},"Protection":{"levelMax":4,"weight":1,"incompatible":["Blast Protection","Fire Protection","Projectile Protection"],"items":["Helmet","Chestplate","Leggings","Boots","Turtle Shell"]},"Punch":{"levelMax":2,"weight":2,"items":["Bow"]},"Quick Charge":{"levelMax":3,"weight":1,"items":["Crossbow"]},"Respiration":{"levelMax":3,"weight":2,"items":["Helmet","Turtle Shell"]},"Riptide":{"levelMax":3,"weight":2,"incompatible":["Channelling","Loyalty"],"items":["Trident"]},"Sharpness":{"levelMax":5,"weight":1,"incompatible":["Bane of Arthropods","Cleaving","Smite","Impaling","Breach","Density"],"items":["Sword","Axe","Spear"]},"Silk Touch":{"levelMax":1,"weight":4,"incompatible":["Fortune"],"items":["PickAxe","Shovel","Axe","Hoe","Shears"]},"Smite":{"levelMax":5,"weight":1,"incompatible":["Bane of Arthropods","Cleaving","Sharpness","Impaling","Breach","Density"],"items":["Sword","Axe","Mace","Spear"]},"Soul Speed":{"levelMax":3,"weight":4,"items":["Boots"]},"Sweeping Edge":{"levelMax":3,"weight":2,"items":["Sword"]},"Swift Sneak":{"levelMax":3,"weight":4,"items":["Leggings"]},"Thorns":{"levelMax":3,"weight":4,"items":["Helmet","Chestplate","Leggings","Boots","Turtle Shell"]},"Unbreaking":{"levelMax":3,"weight":1,"items":["Helmet","Chestplate","Leggings","Boots","PickAxe","Shovel","Axe","Sword","Hoe","Fishing Rod","Bow","Shears","Flint and Steel","Compass","Carrot on a Stick","Warped Fungus on a Stick","Brush","Shield","Elytra","Trident","Turtle Shell","Crossbow","Mace","Spear"]},"Wind Burst":{"levelMax":3,"weight":2,"items":["Mace"]}};
+    const ITEM_NAMES = {"Helmet":"头盔","Chestplate":"胸甲","Leggings":"护腿","Boots":"靴子","Turtle Shell":"海龟壳","PickAxe":"镐","Shovel":"锹","Axe":"斧","Sword":"剑","Hoe":"锄","Fishing Rod":"钓鱼竿","Bow":"弓","Shears":"剪刀","Flint and Steel":"打火石","Compass":"指南针","Recovery Compass":"追溯指针","Carrot on a Stick":"胡萝卜钓竿","Warped Fungus on a Stick":"诡异菌钓竿","Brush":"刷子","Shield":"盾牌","Elytra":"鞘翅","Pumpkin":"南瓜","Head":"头颅","Trident":"三叉戟","Crossbow":"弩","Mace":"重锤","Spear":"长矛"};
+    const ENCHANT_NAMES = {"Aqua Affinity":"水下速掘","Bane of Arthropods":"节肢杀手","Blast Protection":"爆炸保护","Breach":"破甲","Channeling":"引雷","Cleaving":"劈裂","Curse of Binding":"绑定诅咒","Curse of Vanishing":"消失诅咒","Density":"致密","Depth Strider":"深海探索者","Efficiency":"效率","Feather Falling":"摔落保护","Fire Aspect":"火焰附加","Fire Protection":"火焰保护","Flame":"火矢","Fortune":"时运","Frost Walker":"冰霜行者","Impaling":"穿刺","Infinity":"无限","Knockback":"击退","Looting":"抢夺","Loyalty":"忠诚","Luck of the Sea":"海之眷顾","Lunge":"突进","Lure":"饵钓","Mending":"经验修补","Multishot":"多重射击","Piercing":"穿透","Power":"力量","Projectile Protection":"弹射物保护","Protection":"保护","Punch":"冲击","Quick Charge":"快速装填","Respiration":"水下呼吸","Riptide":"激流","Sharpness":"锋利","Silk Touch":"精准采集","Smite":"亡灵杀手","Soul Speed":"灵魂疾行","Sweeping Edge":"横扫之刃","Swift Sneak":"迅捷潜行","Thorns":"荆棘","Unbreaking":"耐久","Wind Burst":"风爆"};
+
+    const state = { wanted: [], result: null };
+    const $ = (id) => document.getElementById(id);
+    const roman = ["", "I", "II", "III", "IV", "V"];
+    const displayEnchant = (name) => ENCHANT_NAMES[name] ? ENCHANT_NAMES[name] + " / " + name : name;
+    const displayItem = (name) => ITEM_NAMES[name] ? ITEM_NAMES[name] + " / " + name : name;
+    const enchantExperience = (e) => e.level * e.weight;
+
+    function penaltyToLevel(penalty) {
+      if (penalty <= 0) return 0;
+      if (penalty >= 63) return Number.MAX_SAFE_INTEGER;
+      return (1 << penalty) - 1;
+    }
+    function levelToExperience(level) {
+      if (level <= 16) return level * level + 6 * level;
+      if (level <= 31) return Math.floor((5 * level * level - 81 * level + 720) / 2);
+      return Math.floor((9 * level * level - 325 * level + 4440) / 2);
+    }
+    function unit(level = 0, penalty = 0, stepLevel = 0, historyLevel = 0, historyExperience = 0) {
+      return { level, penalty, stepLevel, historyLevel, historyExperience };
+    }
+    function addUnit(left, right) {
+      const level = left.level + right.level;
+      const penalty = Math.max(left.penalty, right.penalty) + 1;
+      const stepLevel = right.level + penaltyToLevel(left.penalty) + penaltyToLevel(right.penalty);
+      const historyLevel = stepLevel + left.historyLevel + right.historyLevel;
+      const historyExperience = levelToExperience(stepLevel) + left.historyExperience + right.historyExperience;
+      return unit(level, penalty, stepLevel, historyLevel, historyExperience);
+    }
+    function enchantItem(enchantUnit, penalty = 0) {
+      return addUnit(unit(0, penalty), enchantUnit);
+    }
+    function compareEnchant(a, b) {
+      let value = enchantExperience(a) - enchantExperience(b);
+      if (value === 0) value = a.level - b.level;
+      if (value === 0) value = a.name.localeCompare(b.name);
+      return value < 0 ? -1 : value > 0 ? 1 : 0;
+    }
+    function enchantLayer(total, initialPenalty) {
+      const maxSteps = [];
+      let step = initialPenalty;
+      while (total > 0) {
+        const count = Math.min(total, Math.pow(2, step++));
+        maxSteps.push(count);
+        total -= count;
+      }
+      return maxSteps;
+    }
+    function computeExperienceStep(step) {
+      let temp = step.map((value) => unit(value));
+      while (temp.length > 1) {
+        const result = [];
+        for (let j = 0; j < temp.length; j++) {
+          const first = temp[j];
+          result.push(++j < temp.length ? addUnit(first, temp[j]) : first);
+        }
+        temp = result;
+      }
+      return temp[0];
+    }
+    function computeExperience(steps) {
+      return steps.map(computeExperienceStep);
+    }
+    function orderBySumBasic(steps) {
+      for (let i = steps.length - 1; i > 0; i--) {
+        const current = steps[i];
+        const previous = steps[i - 1];
+        if (current.length === previous.length) {
+          const currentSum = current.reduce((a, b) => a + b, 0);
+          const previousSum = previous.reduce((a, b) => a + b, 0);
+          if (currentSum > previousSum) {
+            steps[i] = previous;
+            steps[i - 1] = current;
+          }
+        }
+      }
+      return steps;
+    }
+    function orderBySumWithPenalty(steps, initialPenalty) {
+      for (let i = steps.length - 1; i > 0; i--) {
+        const current = steps[i];
+        const previous = steps[i - 1];
+        if (current.length < previous.length) {
+          const index = initialPenalty + i;
+          const currentSum = enchantItem(computeExperienceStep(current), index).stepLevel;
+          const previousSum = enchantItem(computeExperienceStep(previous), index - 1).stepLevel;
+          if (currentSum - previousSum > previous.length) {
+            steps[i] = previous;
+            steps[i - 1] = current;
+          }
+        }
+      }
+      return steps;
+    }
+    function orderWithGreedy(numList, maxSteps, initialPenalty) {
+      const tempSteps = [...maxSteps];
+      const tempList = [...numList].sort((a, b) => a - b);
+      const steps = Array.from({ length: tempSteps.length }, () => []);
+      for (let i = tempList.length; i > 0;) {
+        let min = Math.min(...tempSteps);
+        let step = tempSteps.indexOf(min);
+        steps[step].push(tempList[--i]);
+        tempSteps[step]--;
+        if (tempSteps[step] <= 0) tempSteps[step] = Number.MAX_SAFE_INTEGER;
+      }
+      return orderBySumWithPenalty(steps, initialPenalty);
+    }
+    function orderWithSequential(numList, maxSteps) {
+      const tempSteps = [...maxSteps];
+      const tempList = [...numList].sort((a, b) => a - b);
+      const steps = Array.from({ length: tempSteps.length }, () => []);
+      for (let i = tempList.length; i > 0;) {
+        for (let j = 0; j < tempSteps.length; j++) {
+          if (tempSteps[j] > 0) {
+            steps[j].push(tempList[--i]);
+            tempSteps[j]--;
+          }
+        }
+      }
+      return steps;
+    }
+    function orderWithAlternating(numList, maxSteps) {
+      const tempList = [...numList].sort((a, b) => a - b);
+      const steps = [];
+      for (const count of maxSteps) {
+        const list = [];
+        for (let j = 1; j <= count; j++) {
+          const index = (j & 1) === 1 ? tempList.length - 1 : 0;
+          list.push(tempList[index]);
+          tempList.splice(index, 1);
+        }
+        steps.push(list);
+      }
+      return orderBySumBasic(steps);
+    }
+    function getExperience(steps, initialPenalty) {
+      const xpList = computeExperience(steps);
+      let item = unit(0, initialPenalty);
+      for (const level of xpList) item = addUnit(item, level);
+      return item.historyExperience;
+    }
+    function orderEnchants(numList, maxSteps, initialPenalty) {
+      const a = orderWithGreedy(numList, maxSteps, initialPenalty);
+      const b = orderWithSequential(numList, maxSteps);
+      const c = orderWithAlternating(numList, maxSteps);
+      const av = getExperience(a, initialPenalty);
+      const bv = getExperience(b, initialPenalty);
+      const cv = getExperience(c, initialPenalty);
+      return av <= bv ? (av <= cv ? a : c) : (bv <= cv ? b : c);
+    }
+    function ordering(wantedList, initialPenalty = 0) {
+      if (!wantedList.length) throw new Error("没有选择附魔。");
+      const sorted = [...wantedList].sort((a, b) => compareEnchant(b, a));
+      const numList = sorted.map(enchantExperience).reverse();
+      const maxSteps = enchantLayer(numList.length, initialPenalty);
+      const penalty = initialPenalty + maxSteps.length;
+      const orderingSteps = orderEnchants(numList, maxSteps, initialPenalty);
+      const levelList = computeExperience(orderingSteps);
+      const levelCosts = levelList.map((level, index) => enchantItem(level, index + initialPenalty).stepLevel);
+      const maxExperience = Math.max(...levelCosts);
+      let item = unit(0, initialPenalty);
+      for (const level of levelList) item = addUnit(item, level);
+      const remaining = [...sorted];
+      const steps = [];
+      for (const step of orderingSteps) {
+        const enchantments = [];
+        for (const xp of step) {
+          const index = remaining.findIndex((e) => enchantExperience(e) === xp);
+          enchantments.push(remaining[index]);
+          remaining.splice(index, 1);
+        }
+        steps.push(enchantments);
+      }
+      return {
+        penalty,
+        maxExperience,
+        totalExperience: item.historyLevel,
+        totalXp: item.historyExperience,
+        isTooExpensive: maxExperience > 39,
+        isTooManyPenalty: penalty > 6,
+        steps
+      };
+    }
+    function allItems() {
+      return [...new Set(Object.values(ENCHANTS).flatMap((e) => e.items))].sort();
+    }
+    function enchantForItem(item) {
+      return Object.entries(ENCHANTS)
+        .filter(([, e]) => e.items.includes(item))
+        .map(([name, e]) => ({ name, ...e }))
+        .sort((a, b) => displayEnchant(a.name).localeCompare(displayEnchant(b.name), "zh-CN"));
+    }
+    function selectedNames() {
+      return new Set(state.wanted.map((e) => e.name));
+    }
+    function hasConflict(enchant) {
+      const names = selectedNames();
+      if (names.has(enchant.name)) return "已经选择了这个附魔";
+      const incompatible = enchant.incompatible || [];
+      for (const selected of state.wanted) {
+        if (incompatible.includes(selected.name) || (selected.incompatible || []).includes(enchant.name)) {
+          return "与已选择的 " + displayEnchant(selected.name) + " 冲突";
+        }
+      }
+      return "";
+    }
+    function updateEnchantOptions() {
+      const item = $("itemSelect").value;
+      const options = enchantForItem(item);
+      $("enchantSelect").innerHTML = options.map((e) => '<option value="' + e.name.replaceAll('"', "&quot;") + '">' + displayEnchant(e.name) + "</option>").join("");
+      updateLevelFromEnchant();
+    }
+    function updateLevelFromEnchant() {
+      const name = $("enchantSelect").value;
+      const data = ENCHANTS[name];
+      if (!data) return;
+      $("levelInput").max = data.levelMax;
+      $("levelInput").value = data.levelMax;
+      const conflict = hasConflict({ name, ...data });
+      $("compatHint").textContent = conflict || "权重 " + data.weight + "，最高 " + roman[data.levelMax] + " 级。";
+      $("compatHint").className = conflict ? "hint warn" : "hint";
+    }
+    function animateResult() {
+      const panel = $("steps").closest(".panel");
+      panel.classList.remove("result-updated");
+      void panel.offsetWidth;
+      panel.classList.add("result-updated");
+      document.querySelectorAll("#steps .step").forEach((step, index) => {
+        step.style.animationDelay = Math.min(index * 55, 330) + "ms";
+      });
+    }
+    function animateWantedHeight(list, previousHeight) {
+      const nextHeight = list.getBoundingClientRect().height;
+      const alreadyRendered = list.dataset.rendered === "true";
+      list.dataset.rendered = "true";
+      if (!alreadyRendered || Math.abs(nextHeight - previousHeight) < 1 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      list.animate(
+        [{ height: previousHeight + "px" }, { height: nextHeight + "px" }],
+        { duration: 280, easing: "cubic-bezier(.2,.8,.2,1)" }
+      );
+    }
+    function renderWanted() {
+      const list = $("wantedList");
+      const previousHeight = list.getBoundingClientRect().height;
+      list.getAnimations().forEach((animation) => animation.cancel());
+      if (!state.wanted.length) {
+        list.innerHTML = '<div class="empty">还没有添加附魔</div>';
+        animateWantedHeight(list, previousHeight);
+        return;
+      }
+      list.innerHTML = state.wanted.map((e, index) =>
+        '<div class="wanted-item">' +
+          '<div>' +
+            '<div class="wanted-title">' + displayEnchant(e.name) + " " + (roman[e.level] || e.level) + '</div>' +
+            '<div class="wanted-meta">权重 ' + e.weight + '，基础花费 ' + enchantExperience(e) + '</div>' +
+          '</div>' +
+          '<button class="icon-btn" title="移除" data-remove="' + index + '">×</button>' +
+        '</div>'
+      ).join("");
+      animateWantedHeight(list, previousHeight);
+      document.querySelectorAll("[data-remove]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const item = button.closest(".wanted-item");
+          if (item) item.classList.add("removing");
+          window.setTimeout(() => {
+            state.wanted.splice(Number(button.dataset.remove), 1);
+            renderAll();
+          }, 160);
+        });
+      });
+    }
+    function renderResult() {
+      const result = state.result;
+      $("calculate").disabled = !state.wanted.length;
+      if (!result) {
+        $("penaltyOut").textContent = "-";
+        $("maxLevelOut").textContent = "-";
+        $("totalLevelOut").textContent = "-";
+        $("totalXpOut").textContent = "-";
+        $("statusChips").innerHTML = "";
+        $("steps").innerHTML = '<div class="empty">添加附魔后点击“计算顺序”</div>';
+        animateResult();
+        return;
+      }
+      $("penaltyOut").textContent = result.penalty;
+      $("maxLevelOut").textContent = result.maxExperience;
+      $("totalLevelOut").textContent = result.totalExperience;
+      $("totalXpOut").textContent = result.totalXp;
+      $("statusChips").innerHTML = [
+        result.isTooExpensive ? '<span class="chip warn">单次超过 39 级</span>' : '<span class="chip">可铁砧操作</span>',
+        result.isTooManyPenalty ? '<span class="chip warn">惩罚超过 6</span>' : '<span class="chip">惩罚正常</span>'
+      ].join("");
+      $("steps").innerHTML = result.steps.map((step, index) =>
+        '<div class="step">' +
+          '<div class="step-head">' +
+            '<div class="step-title">第 ' + (index + 1) + ' 步</div>' +
+            '<span class="chip">' + step.length + ' 本书</span>' +
+          '</div>' +
+          '<div class="books">' +
+            step.map((e, i) =>
+              (i ? '<span class="plus">+</span>' : '') +
+              '<span class="book">' + displayEnchant(e.name) + " " + (roman[e.level] || e.level) + '</span>'
+            ).join("") +
+          '</div>' +
+        '</div>'
+      ).join("");
+      animateResult();
+    }
+    function renderAll() {
+      renderWanted();
+      state.result = null;
+      renderResult();
+      updateLevelFromEnchant();
+    }
+    function addSelected() {
+      const name = $("enchantSelect").value;
+      const data = ENCHANTS[name];
+      const level = Math.max(1, Math.min(Number($("levelInput").value || data.levelMax), data.levelMax));
+      const enchant = { name, level, weight: data.weight, incompatible: data.incompatible || [] };
+      const conflict = hasConflict(enchant);
+      if (conflict) {
+        $("compatHint").textContent = conflict;
+        $("compatHint").className = "hint warn";
+        return;
+      }
+      state.wanted.push(enchant);
+      renderAll();
+    }
+    function loadPreset(name) {
+      const presets = {
+        Sword: ["Sweeping Edge", "Looting", "Sharpness", "Fire Aspect", "Unbreaking", "Knockback", "Mending"],
+        Bow: ["Power", "Punch", "Unbreaking", "Infinity", "Flame"],
+        PickAxe: ["Fortune", "Unbreaking", "Mending", "Efficiency"],
+        Boots: ["Thorns", "Soul Speed", "Depth Strider", "Protection", "Feather Falling", "Unbreaking", "Mending"],
+        Trident: ["Impaling", "Channeling", "Unbreaking", "Loyalty", "Mending"],
+        Mace: ["Breach", "Wind Burst", "Unbreaking", "Fire Aspect", "Mending"]
+      };
+      $("itemSelect").value = name;
+      updateEnchantOptions();
+      state.wanted = presets[name].map((enchantName) => {
+        const e = ENCHANTS[enchantName];
+        return { name: enchantName, level: e.levelMax, weight: e.weight, incompatible: e.incompatible || [] };
+      });
+      renderAll();
+      document.querySelectorAll("[data-preset]").forEach((button) => button.classList.toggle("active", button.dataset.preset === name));
+    }
+    function calculate() {
+      $("calculate").classList.remove("working");
+      void $("calculate").offsetWidth;
+      $("calculate").classList.add("working");
+      window.setTimeout(() => $("calculate").classList.remove("working"), 280);
+      try {
+        state.result = ordering(state.wanted, Math.max(0, Number($("penaltyInput").value || 0)));
+        renderResult();
+      } catch (error) {
+        $("steps").innerHTML = '<div class="empty warn">' + error.message + "</div>";
+      }
+    }
+    function resultText() {
+      if (!state.result) return "";
+      const lines = state.result.steps.map((step, index) =>
+        "Step " + (index + 1) + ": " + step.map((e) => displayEnchant(e.name) + " " + (roman[e.level] || e.level)).join(" + ")
+      );
+      lines.push("Penalty Level: " + state.result.penalty);
+      lines.push("Max Experience Level: " + state.result.maxExperience);
+      lines.push("Total Experience Level: " + state.result.totalExperience);
+      lines.push("Total XP: " + state.result.totalXp);
+      return lines.join("\n");
+    }
+    function init() {
+      $("itemSelect").innerHTML = allItems().map((item) => '<option value="' + item + '">' + displayItem(item) + "</option>").join("");
+      $("itemSelect").value = "Sword";
+      updateEnchantOptions();
+      $("presets").innerHTML = ["Sword", "Bow", "PickAxe", "Boots", "Trident", "Mace"].map((item) =>
+        '<button data-preset="' + item + '">' + displayItem(item) + "</button>"
+      ).join("");
+      $("itemSelect").addEventListener("change", updateEnchantOptions);
+      $("enchantSelect").addEventListener("change", updateLevelFromEnchant);
+      $("maxLevel").addEventListener("click", updateLevelFromEnchant);
+      $("addEnchant").addEventListener("click", addSelected);
+      $("calculate").addEventListener("click", calculate);
+      $("clearAll").addEventListener("click", () => { state.wanted = []; state.result = null; renderAll(); });
+      $("copyResult").addEventListener("click", async () => {
+        const text = resultText();
+        if (text && navigator.clipboard) await navigator.clipboard.writeText(text);
+      });
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => loadPreset(button.dataset.preset));
+      });
+      loadPreset("Sword");
+      calculate();
+    }
+    init();
+  </script>
+</body>
+</html>

@@ -1,18 +1,36 @@
 Options -Indexes
 DirectoryIndex index.html index.php
 
+<IfModule mod_setenvif.c>
+    SetEnvIfNoCase X-Forwarded-Proto "^https$" HTTPS=on
+    SetEnvIfNoCase CF-Visitor "scheme.:.https" HTTPS=on
+</IfModule>
+
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !^https$ [NC]
+RewriteCond %{HTTP:CF-Visitor} !scheme.:.https [NC]
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
 
 RewriteRule ^(?:config|data)(?:/|$) - [R=404,L]
 RewriteRule ^api/(?:lib|cron)(?:/|$) - [R=404,L]
 RewriteRule (^|/)\. - [R=404,L]
 
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+?)/?$ $1.php [L,QSA]
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.+?)/?$ $1.html [L,QSA]
+
 <IfModule mod_headers.c>
     Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    <FilesMatch "\.(?:css|js|png|jpg|jpeg|gif|webp|ico|woff2?)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
 </IfModule>
 
 <FilesMatch "(^\.|\.(?:toml|sql|log|ini|example)$)">

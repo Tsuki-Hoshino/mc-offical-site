@@ -170,7 +170,7 @@ window.MCSiteConfig = {
 
 `siteName` 是页头和页脚名称，`serverName` 是首页标题，`serverAddress` 是玩家要复制的进服地址。没有备案信息时保持空字符串即可。`offlineAfterSeconds` 表示网站多久收不到新状态后显示离线，通常应大于 `upload_interval_seconds` 的数倍。
 
-若要更换图标和背景，分别替换 `website/assets/server-icon.png` 和 `website/assets/site-background.jpg`，尽量保持原文件名，避免还要修改页面引用。
+当前页面使用纯色背景和 `MC` 文字图标。需要换成自己的图片时，把图片放进 `website/assets/`，再修改 `website/index.html` 和 `website/assets/site.css` 中对应的图标与背景样式。
 
 ### 5. 配置 Nginx 或 Apache
 
@@ -406,7 +406,7 @@ GitHub Actions 工作流会在推送到 `main`、创建 `v*` 标签、Pull Reque
 网站是普通文件目录，开发时可以用 PHP 内置服务器临时查看页面：
 
 ```bash
-php -S 127.0.0.1:8080 -t website
+php -S localhost:8080 -t website
 ```
 
 但真实推送、HTTPS、PHP-FPM 和 MySQL 仍应在正式服务器上验证。

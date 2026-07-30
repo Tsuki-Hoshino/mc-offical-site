@@ -16,7 +16,7 @@ function sync_config(): array
 
     $config += [
         'token' => getenv('MC_SYNC_TOKEN') ?: '',
-        'allowed_types' => ['status', 'stats'],
+        'allowed_types' => ['status', 'players', 'stats', 'recipes', 'mods', 'advancements'],
         'max_bytes' => 33554432,
     ];
 
