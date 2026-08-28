@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "MC Official Site Collector",
   "description": "将服务器实时状态与原版玩家统计安全同步到网站。",
-  "authors": ["示例服务器"],
+  "authors": ["Open Source Contributors"],
   "environment": "server",
   "entrypoints": {
     "main": ["net.mcsite.collector.fabric.FabricCollectorMod"]

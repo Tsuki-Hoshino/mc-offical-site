@@ -29,13 +29,13 @@ $claimTop=array_values(array_filter($materialTotals,fn($m)=>$m['claimed']>0));us
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f9a8d4">
 <title>
-<?=h($project['name'])?> | 计划表 | 示例服务器</title>
-<link rel="stylesheet" href="../assets/site.css?v=20260816b">
+<?=h($project['name'])?> | 计划表 | Minecraft 生存服务器</title>
+<link rel="stylesheet" href="../assets/site.css?v=20260829a">
 <script src="/assets/lenis.min.js?v=1.3.25">
 </script>
 <script src="../assets/chart.umd.min.js?v=4.5.1">
 </script>
-<script src="/assets/site-config.php?v=20260815i">
+<script src="/assets/site-config.php?v=20260829b">
 </script>
 <script src="../assets/site.js?v=20260811a">
 </script>
@@ -43,7 +43,7 @@ $claimTop=array_values(array_filter($materialTotals,fn($m)=>$m['claimed']>0));us
 <body class="plans-page plan-detail-page">
 <header class="topbar">
 <div class="shell">
-<a class="brand" href="../">示例服务器</a>
+<a class="brand" href="../">Minecraft 生存服务器</a>
 <nav class="nav" aria-label="站点导航">
 <a href="../">首页</a>
 <a href="../状态/">实时状态</a>
@@ -337,7 +337,7 @@ $claimTop=array_values(array_filter($materialTotals,fn($m)=>$m['claimed']>0));us
 </main>
 <footer class="site-footer">
 <div class="shell">
-<span>示例服务器 · <a href="about.php">关于计划表</a></span>
+<span>Minecraft 生存服务器 · <a href="about.php">关于计划表</a></span>
 <div class="filing">
 <a href="https://beian.miit.gov.cn/"></a>
 <a href="https://beian.mps.gov.cn/#/query/webSearch?code="></a>

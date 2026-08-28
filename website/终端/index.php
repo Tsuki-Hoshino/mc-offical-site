@@ -38,17 +38,17 @@ $csrf = auth_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
     <meta name="theme-color" content="#f9a8d4">
-    <title>终端 | 示例服务器</title>
-    <link rel="stylesheet" href="/assets/site.css?v=20260824c">
+    <title>终端 | Minecraft 生存服务器</title>
+    <link rel="stylesheet" href="/assets/site.css?v=20260829a">
     <link rel="stylesheet" href="/assets/xterm/xterm.min.css">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site-config.php?v=20260829b"></script>
     <script src="/assets/xterm/xterm.min.js"></script>
     <script src="/assets/xterm/xterm-addon-fit.min.js"></script>
     <script src="/assets/site.js?v=20260811a"></script>
 </head>
 <body class="admin-page terminal-page">
-<header class="topbar"><div class="shell"><a class="brand" href="/">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/">后台</a><a class="nav-account" href="/终端/" aria-current="page">终端</a><a href="/个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= terminal_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
+<header class="topbar"><div class="shell"><a class="brand" href="/">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/">后台</a><a class="nav-account" href="/终端/" aria-current="page">终端</a><a href="/个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= terminal_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
 <?php if (!$configured): ?>
 <main class="admin-main shell">
     <header class="admin-heading">
@@ -162,7 +162,7 @@ $csrf = auth_csrf_token();
     </div>
 </main>
 <?php endif; ?>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>Minecraft 生存服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 <?php if ($configured): ?><script src="/终端/assets/terminal.js?v=20260826d"></script><script src="/终端/assets/filemanager.js?v=20260824c"></script><?php endif; ?>
 </body>
 </html>

@@ -9,15 +9,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="#f9a8d4">
 <meta name="description" content="生存服务器 玩家统计与实时在线状态。">
-<title>玩家统计 | 示例服务器</title>
+<title>玩家统计 | Minecraft 生存服务器</title>
 
-<link rel="stylesheet" href="../assets/site.css?v=20260816b">
+<link rel="stylesheet" href="../assets/site.css?v=20260829a">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site-config.php?v=20260829b"></script>
 <script src="../assets/site.js?v=20260811a"></script>
 </head>
 <body class="stats-page">
-<header class="topbar"><div class="shell topbar-inner"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="./" aria-current="page">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a><a href="../计划表/">计划表</a></nav></div></header>
+<header class="topbar"><div class="shell topbar-inner"><a class="brand" href="../">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="./" aria-current="page">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a><a href="../计划表/">计划表</a></nav></div></header>
 <main class="shell">
 <div class="page-heading"><h1>玩家统计</h1><p class="updated" id="stats-updated">正在读取统计数据</p></div>
 <section class="ranking" aria-labelledby="ranking-title">
@@ -27,7 +27,7 @@
 <section class="stats-section" aria-labelledby="table-title"><div class="section-head"><h2 id="table-title">全部数据</h2></div><div class="table-wrap"><table><thead><tr><th>玩家</th><th><button class="sort-button active" type="button" data-sort="play_time">游玩时长 ↓</button></th><th><button class="sort-button" type="button" data-sort="mined_blocks">挖掘方块</button></th><th><button class="sort-button" type="button" data-sort="mob_kills">生物击杀</button></th><th><button class="sort-button" type="button" data-sort="player_kills">玩家击杀</button></th><th><button class="sort-button" type="button" data-sort="distance_cm">移动距离</button></th><th><button class="sort-button" type="button" data-sort="jumps">跳跃次数</button></th><th><button class="sort-button" type="button" data-sort="deaths">死亡次数</button></th></tr></thead><tbody id="stats-body"><tr><td colspan="8" class="empty">正在载入玩家数据</td></tr></tbody></table></div></section>
 <section class="tools" aria-labelledby="tools-title"><h2 id="tools-title">服务器工具</h2><div class="tool-links"></div></section>
 </main>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>Minecraft 生存服务器</span><div class="filing"></div></div></footer>
 <script>
 const apiBase='../api/latest.php?type=';
 const metrics={play_time:{format:formatPlayTime},mined_blocks:{format:formatNumber},mob_kills:{format:formatNumber},player_kills:{format:formatNumber},distance_cm:{format:formatDistance},jumps:{format:formatNumber},deaths:{format:formatNumber}};

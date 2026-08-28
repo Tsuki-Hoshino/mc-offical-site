@@ -31,7 +31,7 @@ function dimensions(): array
 function render_site_header(string $title, string $description = ''): void
 {
     machine_session_start();
-    $pageTitle = $title === '经纬度' ? '经纬度 | 示例服务器' : $title . ' | 经纬度 | 示例服务器';
+    $pageTitle = $title === '经纬度' ? '经纬度 | Minecraft 生存服务器' : $title . ' | 经纬度 | Minecraft 生存服务器';
     ?>
 <!doctype html>
 <html lang="zh-CN">
@@ -40,23 +40,23 @@ function render_site_header(string $title, string $description = ''): void
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f9a8d4">
-    <meta name="description" content="<?= h($description ?: '示例服务器 Minecraft 机器坐标登记与维度坐标换算。') ?>">
+    <meta name="description" content="<?= h($description ?: 'Minecraft 生存服务器 Minecraft 机器坐标登记与维度坐标换算。') ?>">
     <title><?= h($pageTitle) ?></title>
     <link rel="stylesheet" href="../assets/site.css?v=<?= h(SITE_CSS_VERSION) ?>">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site-config.php?v=20260829b"></script>
     <script src="../assets/site.js?v=<?= h(SITE_JS_VERSION) ?>"></script>
     <script defer src="assets/machines.js?v=<?= h(MACHINE_JS_VERSION) ?>"></script>
 </head>
 <body class="machine-page">
-<header class="topbar"><div class="shell"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="./" aria-current="page">经纬度</a><a href="../计划表/">计划表</a><?php if (machine_is_superadmin()): ?><a class="nav-account" href="../admin/">后台</a><?php endif; ?><?php if (machine_is_authenticated()): ?><a href="../个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/经纬度/"><input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>"><button type="submit">退出</button></form><?php endif; ?></nav></div></header>
+<header class="topbar"><div class="shell"><a class="brand" href="../">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="./" aria-current="page">经纬度</a><a href="../计划表/">计划表</a><?php if (machine_is_superadmin()): ?><a class="nav-account" href="../admin/">后台</a><?php endif; ?><?php if (machine_is_authenticated()): ?><a href="../个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/经纬度/"><input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>"><button type="submit">退出</button></form><?php endif; ?></nav></div></header>
 <?php
 }
 
 function render_site_footer(): void
 {
     ?>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>Minecraft 生存服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>
 <?php

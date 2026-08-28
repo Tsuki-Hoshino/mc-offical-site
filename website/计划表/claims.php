@@ -52,14 +52,14 @@ $progress = $totalBoxes > 0 ? (int)round($completedBoxes / $totalBoxes * 100) : 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>我的认领 | 计划表 | 示例服务器</title>
-<link rel="stylesheet" href="../assets/site.css?v=20260816b">
+<title>我的认领 | 计划表 | Minecraft 生存服务器</title>
+<link rel="stylesheet" href="../assets/site.css?v=20260829a">
 <script src="/assets/lenis.min.js?v=1.3.25"></script>
-<script src="/assets/site-config.php?v=20260815i"></script>
+<script src="/assets/site-config.php?v=20260829b"></script>
 <script src="../assets/site.js?v=20260811a"></script>
 </head>
 <body class="plans-page">
-<header class="topbar"><div class="shell"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a><a href="./" aria-current="page">计划表</a><?php if(auth_is_superadmin()):?><a class="nav-account" href="/admin/">后台</a><?php endif;?><a href="/个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/计划表/claims.php"><input type="hidden" name="csrf_token" value="<?=h($csrf)?>"><button type="submit">退出</button></form></nav></div></header>
+<header class="topbar"><div class="shell"><a class="brand" href="../">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="../状态/">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a><a href="./" aria-current="page">计划表</a><?php if(auth_is_superadmin()):?><a class="nav-account" href="/admin/">后台</a><?php endif;?><a href="/个人资料/">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/计划表/claims.php"><input type="hidden" name="csrf_token" value="<?=h($csrf)?>"><button type="submit">退出</button></form></nav></div></header>
 <main class="shell plans-main">
 <section class="plans-heading"><div><p class="plans-kicker">MY CLAIMS</p><div class="plan-claim-user"><img src="asset.php?kind=avatar&amp;name=<?=rawurlencode($mc)?>" alt=""><h1><?=h($display)?> 的认领</h1></div><p class="plans-lede">按项目和投影集中跟踪负责的材料。</p></div><a class="plans-primary" href="./">返回项目</a></section>
 <section class="plans-summary plan-claims-summary"><div><span>认领记录</span><strong><?=count($claims)?></strong></div><div><span>待收集</span><strong><?=$pendingCount?></strong></div><div><span>已完成</span><strong><?=$completedCount?></strong></div><div><span>收集进度</span><strong><?=$progress?>%</strong></div></section>
@@ -94,7 +94,7 @@ $progress = $totalBoxes > 0 ? (int)round($completedBoxes / $totalBoxes * 100) : 
 <?php endif; ?>
   <section class="plan-create" data-batch-confirm hidden><div class="plan-create-panel plan-confirm-panel" role="dialog" aria-modal="true"><h2>确认批量操作</h2><p data-batch-confirm-message></p><div class="plan-modal-actions"><button type="button" data-batch-cancel>返回</button><button type="button" class="plans-primary" data-batch-ok>确认</button></div></div></section><div class="plan-toast" data-toast hidden></div>
 </main>
-<footer class="site-footer"><div class="shell"><span>示例服务器 · <a href="about.php">关于计划表</a></span><div class="filing"><a href="https://beian.miit.gov.cn/"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code="></a></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>Minecraft 生存服务器 · <a href="about.php">关于计划表</a></span><div class="filing"><a href="https://beian.miit.gov.cn/"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code="></a></div></div></footer>
 <script>(function(){
 const csrf='<?=h($csrf)?>',toastBox=document.querySelector('[data-toast]');let status='all',query='';
 function toast(message){toastBox.textContent=message;toastBox.hidden=false;clearTimeout(toastBox.timer);toastBox.timer=setTimeout(()=>toastBox.hidden=true,2400)}

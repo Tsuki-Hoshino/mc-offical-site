@@ -67,14 +67,14 @@ $csrf = auth_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
     <meta name="theme-color" content="#f9a8d4">
-    <title>管理账户 | 后台 | 示例服务器</title>
-    <link rel="stylesheet" href="/assets/site.css?v=20260816b">
+    <title>管理账户 | 后台 | Minecraft 生存服务器</title>
+    <link rel="stylesheet" href="/assets/site.css?v=20260829a">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site-config.php?v=20260829b"></script>
     <script src="/assets/site.js?v=20260811a"></script>
 </head>
 <body class="admin-page machine-page">
-<header class="topbar"><div class="shell"><a class="brand" href="/">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/" aria-current="page">后台</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= admin_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
+<header class="topbar"><div class="shell"><a class="brand" href="/">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/" aria-current="page">后台</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= admin_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
 <main class="machine-main machine-account-editor shell"><header class="machine-heading"><div><a class="machine-back" href="/admin/users.php">返回账户管理</a><h1>管理 <?= admin_h($account['username']) ?></h1><p>调整角色、状态或重置密码</p></div><?php if ((int) (auth_current_user()['id'] ?? 0) !== $id): ?><button class="machine-button danger" type="button" data-delete-user-open>删除账户</button><?php endif; ?></header>
 <?php $action = '/admin/user_edit.php?id=' . $id; require __DIR__ . '/_user_form.php'; ?>
 <?php if ((int) (auth_current_user()['id'] ?? 0) !== $id): ?>
@@ -102,6 +102,6 @@ $csrf = auth_csrf_token();
 </script>
 <?php endif; ?>
 </main>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>Minecraft 生存服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>
