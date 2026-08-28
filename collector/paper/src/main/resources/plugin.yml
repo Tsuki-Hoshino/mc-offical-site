@@ -1,6 +1,6 @@
 name: MCOfficialSiteCollector
 version: 1.0.0
-main: com.example.mcsite.paper.PaperCollectorPlugin
+main: net.mcsite.collector.paper.PaperCollectorPlugin
 api-version: '1.14'
 load: STARTUP
 authors: ["Open Source Contributors"]

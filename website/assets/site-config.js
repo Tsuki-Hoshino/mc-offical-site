@@ -1,7 +1,7 @@
 window.MCSiteConfig = {
-    siteName: '示例服务器',
+    siteName: 'Minecraft 生存服务器',
     serverName: '生存服务器',
-    serverAddress: 'mc.example.com',
+    serverAddress: '服务器地址未配置',
     editionLabel: 'MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET',
     icpNumber: '',
     policeNumber: '',
@@ -13,7 +13,7 @@ window.applyMCSiteConfig = function () {
     var config = window.MCSiteConfig || {};
     var siteName = config.siteName || 'Minecraft 服务器';
     var serverName = config.serverName || '生存服务器';
-    var serverAddress = config.serverAddress || 'mc.example.com';
+    var serverAddress = config.serverAddress || '服务器地址未配置';
 
     document.querySelectorAll('.brand, .site-footer .shell > span').forEach(function (element) {
         element.textContent = siteName;

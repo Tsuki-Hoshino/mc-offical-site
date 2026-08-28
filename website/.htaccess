@@ -33,6 +33,6 @@ RewriteRule ^(.+?)/?$ $1.html [L,QSA]
     </FilesMatch>
 </IfModule>
 
-<FilesMatch "(^\.|\.(?:toml|sql|log|ini|example)$)">
+<FilesMatch "(^\.|\.(?:toml|sql|log|ini|template)$)">
     Require all denied
 </FilesMatch>

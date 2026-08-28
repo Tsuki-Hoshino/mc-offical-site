@@ -51,7 +51,7 @@ $resultCount = count($recipes);
                         </svg>
                     </span>
                     <input class="moe-search-input" id="q" name="q" type="search" value="<?= h($query) ?>" placeholder=" " autocomplete="off" aria-label="搜索配方">
-                    <div class="moe-search-examples" aria-hidden="true"><span id="search-example">中文：深色橡木栅栏门</span></div>
+                    <div class="moe-search-suggestions" aria-hidden="true"><span id="search-suggestion">中文：深色橡木栅栏门</span></div>
                     <div class="moe-search-panel" id="moe-search-panel" hidden></div>
                 </div>
             </form>

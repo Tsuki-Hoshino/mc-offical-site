@@ -23,7 +23,7 @@
   <div class="official-intro">
   <div class="official-title"><span class="server-icon" aria-hidden="true">MC</span><div><p class="official-label">MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET</p><h1>生存服务器</h1><p class="official-subtitle" id="home-motd">正在读取服务器 MOTD</p></div></div>
     <div class="connect-box">
-      <div><span>服务器地址</span><strong>mc.example.com</strong></div>
+      <div><span>服务器地址</span><strong>服务器地址未配置</strong></div>
       <button id="copy-address" type="button">复制地址</button>
     </div>
   </div>
@@ -171,7 +171,7 @@ async function refresh(streamRecord=null){
 document.querySelector('main').append(document.querySelector('.official-online'));
 document.getElementById('copy-address').addEventListener('click',async event=>{
   const button=event.currentTarget,original=button.textContent;
-  try{await navigator.clipboard.writeText((window.MCSiteConfig&&window.MCSiteConfig.serverAddress)||'mc.example.com');button.textContent='已复制'}catch(error){button.textContent='复制失败'}
+  try{await navigator.clipboard.writeText((window.MCSiteConfig&&window.MCSiteConfig.serverAddress)||'服务器地址未配置');button.textContent='已复制'}catch(error){button.textContent='复制失败'}
   setTimeout(()=>button.textContent=original,1500);
 });
 refresh();

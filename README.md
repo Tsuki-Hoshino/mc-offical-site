@@ -6,7 +6,7 @@
 
 适合的使用场景：你有一台 Minecraft 服务器，希望拥有一个可以放在自己域名下的官网，显示在线人数、假人数量、MSPT、CPU、内存、网络流量、玩家统计和历史图表。
 
-> 本文默认读者几乎没有 Linux、PHP 或 Git 经验。文中的 `mc.example.com`、`/var/www/mc-official-site`、数据库密码等都是示例，请替换成你自己的值。
+> 本文默认读者几乎没有 Linux、PHP 或 Git 经验。文中的 `SITE_DOMAIN`、`SITE_ROOT`、`DB_PASSWORD` 和 `SYNC_TOKEN` 都是部署变量，请按你的环境设置。
 
 ## 目录
 
@@ -43,7 +43,7 @@
 | 路径 | 用途 |
 | --- | --- |
 | `website/` | 要发布到 PHP 网站服务器的网页、图片、JavaScript 和 API。 |
-| `website/config/*.example` | 网站私密配置模板，复制后去掉 `.example` 才会生效。 |
+| `website/config/*.template` | 网站私密配置模板，复制后去掉 `.template` 才会生效。 |
 | `website/api/` | 接收采集器数据、读取最新数据和历史数据的 PHP 接口。 |
 | `website/data/` | 运行时数据目录，不能提交到 Git，也不能让访客直接下载。 |
 | `collector/` | 采集器的 Gradle 多模块源码。 |
@@ -51,7 +51,7 @@
 | `collector/fabric-*` | 对应 Minecraft 版本的 Fabric 模组。 |
 | `collector/forge-*` | 对应 Minecraft 版本的 Forge 模组。 |
 | `collector/paper/` | Paper/Spigot 插件。 |
-| `config/mc-official-site.toml.example` | Minecraft 服务器端采集器配置模板。 |
+| `config/mc-official-site.toml.template` | Minecraft 服务器端采集器配置模板。 |
 | `deploy/` | Nginx、Apache、数据库建表和定期清理示例。 |
 | `scripts/publish-website.ps1` | Windows 上通过 SSH 发布网站的脚本。 |
 | `.github/workflows/build.yml` | GitHub Actions 自动测试并构建所有采集器。 |
@@ -60,7 +60,7 @@
 
 ### 网站服务器
 
-- 一个域名，例如 `mc.example.com`，并把 DNS 的 A/AAAA 记录指向网站服务器。
+- 一个站点域名 `SITE_DOMAIN`，并把 DNS 的 A/AAAA 记录指向网站服务器。
 - Linux 服务器（Ubuntu、Debian 等均可）。
 - Nginx 或 Apache。
 - PHP 8.3 及 PHP-FPM，至少启用 `pdo_mysql`、`json`、`openssl`。
@@ -132,8 +132,8 @@ mysql -u mc_official_site -p mc_official_site < deploy/sql/schema.sql
 
 ```bash
 cd /var/www/mc-official-site/website
-cp config/database.php.example config/database.php
-cp config/sync.php.example config/sync.php
+cp config/database.php.template config/database.php
+cp config/sync.php.template config/sync.php
 mkdir -p data/inbox
 ```
 
@@ -157,9 +157,9 @@ openssl rand -hex 32
 
 ```javascript
 window.MCSiteConfig = {
-    siteName: '示例服务器',
+    siteName: 'Minecraft 生存服务器',
     serverName: '生存服务器',
-    serverAddress: 'mc.example.com',
+    serverAddress: 'SERVER_ADDRESS',
     editionLabel: 'MINECRAFT JAVA EDITION 1.21.11 FABRIC',
     icpNumber: '',
     policeNumber: '',
@@ -174,7 +174,7 @@ window.MCSiteConfig = {
 
 ### 5. 配置 Nginx 或 Apache
 
-复制 `deploy/nginx.conf.example` 或 `deploy/apache-vhost.conf.example`，把示例域名、网站根目录、证书路径和 PHP-FPM socket 改成实际值。
+复制 `deploy/nginx.conf.template` 或 `deploy/apache-vhost.conf.template`，把 `SITE_DOMAIN`、网站根目录、证书路径和 PHP-FPM socket 改成实际值。
 
 Nginx 示例默认使用：
 
@@ -208,7 +208,7 @@ sudo chmod 640 /var/www/mc-official-site/website/config/*.php
 
 ### 7. （推荐）定期删除旧历史
 
-项目提供的 `deploy/mc-official-site-retention.cron.example` 会每天删除一年以前的记录。把路径改成实际路径后，复制到 `/etc/cron.d/mc-official-site-retention`，并确认 PHP CLI 路径正确：
+项目提供的 `deploy/mc-official-site-retention.cron.template` 会每天删除一年以前的记录。把路径改成实际路径后，复制到 `/etc/cron.d/mc-official-site-retention`，并确认 PHP CLI 路径正确：
 
 ```text
 17 3 * * * www-data /usr/bin/php /var/www/mc-official-site/website/api/cron/prune-history.php >> /var/log/mc-official-site-retention.log 2>&1
@@ -219,15 +219,15 @@ sudo chmod 640 /var/www/mc-official-site/website/config/*.php
 采集器首次启动时会自动在服务器的 `config/` 目录生成 `mc-official-site.toml`。也可以提前复制模板：
 
 ```bash
-cp config/mc-official-site.toml.example <你的服务器>/config/mc-official-site.toml
+cp config/mc-official-site.toml.template <你的服务器>/config/mc-official-site.toml
 ```
 
 必须至少修改：
 
 ```toml
 [endpoint]
-site_url = "https://mc.example.com"
-token = "与网站完全相同的令牌"
+site_url = "https://SITE_DOMAIN"
+token = "SYNC_TOKEN"
 ```
 
 `site_url` 必须以 `https://` 开头，不要填写 `/api/push.php`，程序会自动拼接接口地址。令牌多一个空格或少一个字符都会导致 401 未授权。
@@ -317,7 +317,7 @@ Paper：`paper`（通用 Paper/Spigot 插件，插件声明的最低 API 版本�
 可以用下面的命令模拟一次推送（请替换域名和令牌）：
 
 ```bash
-curl -i -X POST "https://mc.example.com/api/push.php?type=status" \
+curl -i -X POST "https://${SITE_DOMAIN}/api/push.php?type=status" \
   -H "Content-Type: application/json" \
   -H "X-MC-Sync-Token: 你的令牌" \
   -d '{"generated_at":"2026-01-01T00:00:00Z","runtime":{"mspt":10}}'
@@ -333,7 +333,7 @@ curl -i -X POST "https://mc.example.com/api/push.php?type=status" \
 
 ```powershell
 .\scripts\publish-website.ps1 `
-  -HostName mc.example.com `
+  -HostName $env:SITE_DOMAIN `
   -UserName root `
   -RemoteRoot /var/www/mc-official-site `
   -IdentityFile C:\Users\你的用户名\.ssh\id_ed25519
@@ -365,7 +365,7 @@ curl -i -X POST "https://mc.example.com/api/push.php?type=status" \
 
 **API 返回 `401 unauthorized`**：请求没有带令牌或令牌拼写不一致。采集器使用 `X-MC-Sync-Token` 请求头。
 
-**API 返回 `503 token_not_configured`**：网站的 `config/sync.php` 仍是示例值，或环境变量 `MC_SYNC_TOKEN` 为空。
+**API 返回 `503 token_not_configured`**：网站的 `config/sync.php` 尚未配置同步令牌，或环境变量 `MC_SYNC_TOKEN` 为空。
 
 **API 返回 `500` 或历史图表不可用**：检查 `config/database.php`、数据库账号权限、`pdo_mysql` 扩展和 `server_metrics` 表；同时查看 PHP-FPM 错误日志。
 

@@ -7,7 +7,7 @@
   "authors": ["示例服务器"],
   "environment": "server",
   "entrypoints": {
-    "main": ["com.example.mcsite.fabric.FabricCollectorMod"]
+    "main": ["net.mcsite.collector.fabric.FabricCollectorMod"]
   },
   "depends": {
     "fabricloader": ">=0.16.0",

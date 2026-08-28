@@ -1,7 +1,7 @@
 (function () {
     const form = document.querySelector('.search');
     const input = document.querySelector('#q');
-    const searchExample = document.querySelector('#search-example');
+    const searchSuggestion = document.querySelector('#search-suggestion');
     const searchIcon = document.querySelector('.moe-search-icon');
     const grid = document.querySelector('#recipe-grid');
     const empty = document.querySelector('#empty-state');
@@ -17,7 +17,7 @@
     const viewerMaterialList = document.querySelector('#recipe-viewer-material-list');
     const viewerClose = document.querySelector('#recipe-viewer-close');
 
-    if (!form || !input || !searchExample || !searchIcon || !grid || !empty || !count || !viewer || !viewerBody || !viewerStage || !viewerImage || !viewerTitle || !viewerResult || !viewerCount || !viewerPack || !viewerMaterialList || !viewerClose) {
+    if (!form || !input || !searchSuggestion || !searchIcon || !grid || !empty || !count || !viewer || !viewerBody || !viewerStage || !viewerImage || !viewerTitle || !viewerResult || !viewerCount || !viewerPack || !viewerMaterialList || !viewerClose) {
         return;
     }
 
@@ -32,8 +32,8 @@
     let dragStartY = 0;
     let activeSource = null;
     let viewerAnimation = null;
-    let searchExampleIndex = 0;
-    const searchExamples = [
+    let searchSuggestionIndex = 0;
+    const searchSuggestions = [
         '中文：深色橡木栅栏门',
         '拼音：shense xiangmu zhalanmen',
         '首字母：ssxmzlm',
@@ -42,22 +42,22 @@
         '数据包 ID：xekr lazy dark_oak_fence_gate'
     ];
 
-    function rotateSearchExample() {
-        searchExample.classList.add('leaving');
+    function rotateSearchSuggestion() {
+        searchSuggestion.classList.add('leaving');
         window.setTimeout(function () {
-            searchExampleIndex = (searchExampleIndex + 1) % searchExamples.length;
-            searchExample.textContent = searchExamples[searchExampleIndex];
-            searchExample.classList.remove('leaving');
-            searchExample.classList.add('entering');
+            searchSuggestionIndex = (searchSuggestionIndex + 1) % searchSuggestions.length;
+            searchSuggestion.textContent = searchSuggestions[searchSuggestionIndex];
+            searchSuggestion.classList.remove('leaving');
+            searchSuggestion.classList.add('entering');
             window.requestAnimationFrame(function () {
                 window.requestAnimationFrame(function () {
-                    searchExample.classList.remove('entering');
+                    searchSuggestion.classList.remove('entering');
                 });
             });
         }, 220);
     }
 
-    window.setInterval(rotateSearchExample, 4000);
+    window.setInterval(rotateSearchSuggestion, 4000);
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>"']/g, function (char) {

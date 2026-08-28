@@ -1,5 +1,5 @@
 allprojects {
-    group = 'com.example.mcsite'
+    group = 'net.mcsite.collector'
     version = '1.0.0'
 
     repositories {

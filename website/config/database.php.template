@@ -1,0 +1,10 @@
+<?php
+declare(strict_types=1);
+
+return [
+    'host' => getenv('MC_SITE_DB_HOST') ?: '127.0.0.1',
+    'port' => (int) (getenv('MC_SITE_DB_PORT') ?: 3306),
+    'database' => getenv('MC_SITE_DB_NAME') ?: 'mc_official_site',
+    'username' => getenv('MC_SITE_DB_USER') ?: 'mc_site_app',
+    'password' => getenv('MC_SITE_DB_PASSWORD') ?: '',
+];

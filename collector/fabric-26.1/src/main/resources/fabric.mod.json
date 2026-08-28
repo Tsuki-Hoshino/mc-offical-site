@@ -7,7 +7,7 @@
   "environment": "server",
   "entrypoints": {
     "main": [
-      "com.example.mcsite.fabric.FabricCollectorMod"
+      "net.mcsite.collector.fabric.FabricCollectorMod"
     ]
   },
   "depends": {

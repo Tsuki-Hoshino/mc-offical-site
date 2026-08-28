@@ -23,9 +23,9 @@ function site_feature_definitions(): array
 function site_default_settings(): array
 {
     return [
-        'siteName' => '示例服务器',
+        'siteName' => 'Minecraft 生存服务器',
         'serverName' => '生存服务器',
-        'serverAddress' => 'mc.example.com',
+        'serverAddress' => '服务器地址未配置',
         'editionLabel' => 'MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET',
         'homeDescription' => '生存服务器 Minecraft 服务器官网，提供实时状态、玩家统计。',
         'homeContentTitle' => '服务器内容',

@@ -170,7 +170,7 @@ function sync_request_token(): string
 function sync_require_auth(): void
 {
     $expected = (string) (sync_config()['token'] ?? '');
-    if ($expected === '' || $expected === 'change-this-token-before-deploy') {
+    if ($expected === '') {
         sync_json_response(['ok' => false, 'error' => 'token_not_configured'], 503);
     }
 
