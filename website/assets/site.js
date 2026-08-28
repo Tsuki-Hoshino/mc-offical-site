@@ -158,7 +158,8 @@
         try {
             const response = await fetch(url, {
                 headers: { 'X-Requested-With': 'Pjax' },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                cache: 'no-store'
             });
             if (!response.ok) {
                 throw new Error('Page load failed');
@@ -196,6 +197,7 @@
         }
     }
 
+    function initializeSite() {
     root.classList.add('site-motion');
     ensureChrome();
     updateBackToTop();
@@ -214,7 +216,7 @@
         }
 
         const url = new URL(link.href, window.location.href);
-        if (url.origin !== window.location.origin || !/^https?:$/.test(url.protocol)) {
+        if (url.origin !== window.location.origin || url.protocol !== 'https:') {
             return;
         }
         if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
@@ -246,7 +248,11 @@
         nativeClearTimeout(id);
     };
     window.setInterval = function (callback, delay) {
-        const id = nativeSetInterval.apply(window, arguments);
+        const args = Array.prototype.slice.call(arguments, 2);
+        const wrapped = typeof callback === 'function' ? function () {
+            if (!document.hidden) callback.apply(window, args);
+        } : callback;
+        const id = nativeSetInterval(wrapped, delay);
         pageIntervals.add(id);
         return id;
     };
@@ -270,4 +276,11 @@
     }
 
     history.replaceState({ sitePjax: true }, '', window.location.href);
+    }
+
+    if (document.readyState === 'loading') {
+        nativeAddEventListener.call(document, 'DOMContentLoaded', initializeSite, { once: true });
+    } else {
+        initializeSite();
+    }
 }());

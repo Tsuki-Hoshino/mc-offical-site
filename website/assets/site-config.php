@@ -88,16 +88,34 @@ window.applyMCSiteConfig = function () {
 
     document.querySelectorAll('.filing, .history-legal').forEach(renderFiling);
 
-    if (currentUser && currentUser.isSuperadmin) {
+    if (currentUser) {
         document.querySelectorAll('.topbar .nav').forEach(function (nav) {
-            if (nav.querySelector('a[href="/admin/"], a[href="../admin/"], a[href="./admin/"]')) return;
-            var link = document.createElement('a');
-            link.className = 'nav-account';
-            link.href = '/admin/';
-            link.textContent = '后台';
-            var logout = nav.querySelector('form.machine-logout');
-            if (logout) nav.insertBefore(link, logout);
-            else nav.appendChild(link);
+            if (config.terminalUrl && currentUser.isSuperadmin && !nav.querySelector('a[href="/终端/"], a[href="../终端/"], a[href="./终端/"]')) {
+                var terminal = document.createElement('a');
+                terminal.className = 'nav-account';
+                terminal.href = '/终端/';
+                terminal.textContent = '终端';
+                var admin = nav.querySelector('a[href="/admin/"], a[href="../admin/"], a[href="./admin/"]');
+                if (admin) nav.insertBefore(terminal, admin);
+                else nav.appendChild(terminal);
+            }
+            if (currentUser.isSuperadmin && !nav.querySelector('a[href="/admin/"], a[href="../admin/"], a[href="./admin/"]')) {
+                var link = document.createElement('a');
+                link.className = 'nav-account';
+                link.href = '/admin/';
+                link.textContent = '后台';
+                var logout = nav.querySelector('form.machine-logout');
+                if (logout) nav.insertBefore(link, logout);
+                else nav.appendChild(link);
+            }
+            if (!nav.querySelector('a[href="/个人资料/"], a[href="../个人资料/"], a[href="./个人资料/"]')) {
+                var profile = document.createElement('a');
+                profile.href = '/个人资料/';
+                profile.textContent = '个人资料';
+                var logout = nav.querySelector('form.machine-logout');
+                if (logout) nav.insertBefore(profile, logout);
+                else nav.appendChild(profile);
+            }
         });
     }
 

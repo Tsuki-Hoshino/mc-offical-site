@@ -1,1 +1,23 @@
-{}
+{
+  "1": [
+    {"id": "minecraft:reinforced_deepslate", "count": 8},
+    {"id": "minecraft:netherite_ingot", "count": 1}
+  ],
+  "2": [{"id": "minecraft:diamond", "count": 4}],
+  "3": [{"id": "minecraft:netherite_ingot", "count": 8}],
+  "4": [{"id": "minecraft:bedrock", "count": 6}],
+  "5": [{"id": "minecraft:gold_block", "count": 8}],
+  "6": [
+    {"id": "minecraft:crossbow", "count": 1},
+    {"id": "minecraft:emerald_block", "count": 5}
+  ],
+  "7": [
+    {"id": "minecraft:crying_obsidian", "count": 8},
+    {"id": "minecraft:command_block", "count": 1}
+  ],
+  "8": [{"id": "minecraft:shulker_shell", "count": 9}],
+  "9": [
+    {"id": "minecraft:diamond_block", "count": 1},
+    {"id": "minecraft:emerald_block", "count": 5}
+  ]
+}

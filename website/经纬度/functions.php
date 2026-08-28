@@ -44,7 +44,7 @@ function render_site_header(string $title, string $description = ''): void
     <title><?= h($pageTitle) ?></title>
     <link rel="stylesheet" href="../assets/site.css?v=<?= h(SITE_CSS_VERSION) ?>">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260724a"></script>
+    <script src="/assets/site-config.php?v=20260815i"></script>
     <script src="../assets/site.js?v=<?= h(SITE_JS_VERSION) ?>"></script>
     <script defer src="assets/machines.js?v=<?= h(MACHINE_JS_VERSION) ?>"></script>
 </head>
@@ -56,7 +56,7 @@ function render_site_header(string $title, string $description = ''): void
 function render_site_footer(): void
 {
     ?>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>
 <?php
@@ -207,7 +207,41 @@ function machine_file_path(?string $relativePath): ?string
     return $fullPath;
 }
 
-function validate_machine_input(array $input): array
+function machine_player_options(): array
+{
+    static $options = null;
+    if (is_array($options)) {
+        return $options;
+    }
+
+    try {
+        $sql = "SELECT u.username, u.role, COALESCE(p.nickname, '') AS nickname,
+                       COALESCE(p.minecraft_username, '') AS minecraft_username
+                FROM users u
+                LEFT JOIN plan_profiles p ON p.username = u.username
+                WHERE u.enabled = 1
+                ORDER BY u.role = 'superadmin' DESC, u.username";
+        $records = db()->query($sql)->fetchAll();
+    } catch (Throwable $exception) {
+        error_log('Machine player list profile lookup failed: ' . $exception->getMessage());
+        $records = db()->query("SELECT username, role, '' AS nickname, '' AS minecraft_username FROM users WHERE enabled = 1 ORDER BY role = 'superadmin' DESC, username")->fetchAll();
+    }
+
+    $options = array_map(static function (array $record): array {
+        $username = (string) $record['username'];
+        $minecraftName = trim((string) ($record['minecraft_username'] ?? ''));
+        $nickname = trim((string) ($record['nickname'] ?? ''));
+        $label = $nickname !== '' ? $nickname . ' · ' . $username : $username;
+        if ($minecraftName !== '' && $minecraftName !== $username) {
+            $label .= ' · MC ' . $minecraftName;
+        }
+        return ['value' => $username, 'label' => $label];
+    }, $records);
+
+    return $options;
+}
+
+function validate_machine_input(array $input, array $legacyPlayerNames = []): array
 {
     $errors = [];
     $dimensions = dimensions();
@@ -221,7 +255,13 @@ function validate_machine_input(array $input): array
     }
 
     if ($playerName === '') {
-        $errors[] = '请填写玩家名。';
+        $errors[] = '请选择登记玩家。';
+    } else {
+        $allowedPlayerNames = array_column(machine_player_options(), 'value');
+        $allowedPlayerNames = array_merge($allowedPlayerNames, $legacyPlayerNames);
+        if (!in_array($playerName, $allowedPlayerNames, true)) {
+            $errors[] = '登记玩家必须是已启用的统一认证账户。';
+        }
     }
 
     if (!array_key_exists($dimension, $dimensions)) {

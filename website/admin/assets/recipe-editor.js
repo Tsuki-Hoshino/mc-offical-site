@@ -28,8 +28,8 @@
         tnt: 'tnt', command_block: 'command-block'
     };
 
-    const items = Array.isArray(data.items) ? data.items : [];
-    const itemById = new Map(items.map(function (item) { return [item.id, item]; }));
+    let items = Array.isArray(data.items) ? data.items.slice() : [];
+    let itemById = new Map(items.map(function (item) { return [item.id, item]; }));
     const cells = new Array(9).fill(null);
     let output = null;
     let mode = 'shaped';
@@ -72,8 +72,9 @@
 
     function iconUrl(itemId) {
         const slug = slugFromId(itemId);
-        const iconName = COMMON_ICON_NAMES[slug] || slug.replace(/_/g, '-');
-        return 'https://minecraft.wiki/images/ItemSprite_' + encodeURIComponent(iconName) + '.png';
+        const item = itemById.get(itemId);
+        const textureType = item && item.textureType === 'block' ? 'block' : 'item';
+        return 'https://assets.mcasset.cloud/26.1/assets/minecraft/textures/' + textureType + '/' + encodeURIComponent(slug) + '.png';
     }
 
     function itemAbbrev(itemId) {
@@ -84,7 +85,7 @@
 
     function stackHtml(stack) {
         if (!stack) return '';
-        return '<img src="' + escapeHtml(iconUrl(stack.itemId)) + '" alt="" crossorigin="anonymous" loading="lazy">' +
+        return '<img src="' + escapeHtml(iconUrl(stack.itemId)) + '" data-item-id="' + escapeHtml(stack.itemId) + '" alt="" crossorigin="anonymous" loading="lazy">' +
             '<b>' + escapeHtml(itemAbbrev(stack.itemId)) + '</b>' +
             (stack.count > 1 ? '<small>' + stack.count + '</small>' : '');
     }
@@ -92,8 +93,18 @@
     function bindIconFallback(scope) {
         scope.querySelectorAll('img').forEach(function (img) {
             img.addEventListener('error', function () {
+                const owner = img.closest('[data-item-id]');
+                const itemId = img.dataset.itemId || (owner ? owner.dataset.itemId : '');
+                const slug = slugFromId(itemId);
+                const attempt = Number(img.dataset.fallbackAttempt || '0');
+                if (slug && attempt === 0) {
+                    img.dataset.fallbackAttempt = '1';
+                    const fallbackType = img.src.indexOf('/textures/block/') !== -1 ? 'item' : 'block';
+                    img.src = 'https://assets.mcasset.cloud/26.1/assets/minecraft/textures/' + fallbackType + '/' + encodeURIComponent(slug) + '.png';
+                    return;
+                }
                 img.hidden = true;
-            }, { once: true });
+            });
         });
     }
 
@@ -162,7 +173,7 @@
         const filtered = items.filter(function (item) {
             if (!query) return true;
             return String(item.id).toLowerCase().includes(query) || String(item.name || '').toLowerCase().includes(query);
-        }).slice(0, 260);
+        });
         itemGrid.innerHTML = filtered.map(function (item) {
             return '<button class="recipe-item" type="button" draggable="true" data-item-id="' + escapeHtml(item.id) + '" title="' + escapeHtml(item.name + ' / ' + item.id) + '">' +
                 '<img src="' + escapeHtml(iconUrl(item.id)) + '" alt="" crossorigin="anonymous" loading="lazy">' +
@@ -172,6 +183,53 @@
         }).join('');
         bindIconFallback(itemGrid);
         updateSelectedItemLabel();
+    }
+
+    function mergeExternalCatalog(catalog) {
+        const merged = new Map(items.map(function (item) { return [item.id, item]; }));
+        catalog.forEach(function (item) {
+            const existing = merged.get(item.id);
+            if (existing) {
+                merged.set(item.id, Object.assign({}, existing, { textureType: item.textureType }));
+            } else {
+                merged.set(item.id, item);
+            }
+        });
+        items = Array.from(merged.values()).sort(function (a, b) {
+            return String(a.name).localeCompare(String(b.name), 'zh-CN') || String(a.id).localeCompare(String(b.id));
+        });
+        itemById = new Map(items.map(function (item) { return [item.id, item]; }));
+        renderItems();
+    }
+
+    async function loadExternalCatalog() {
+        const controller = new AbortController();
+        const timer = window.setTimeout(function () { controller.abort(); }, 7000);
+        try {
+            const response = await fetch('https://assets.mcasset.cloud/26.1/assets/minecraft/lang/zh_cn.json', {
+                credentials: 'omit',
+                cache: 'force-cache',
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error('catalog_http_' + response.status);
+            const translations = await response.json();
+            const catalog = Object.keys(translations).reduce(function (result, key) {
+                const match = /^(item|block)\.minecraft\.([a-z0-9_]+)$/.exec(key);
+                if (match) {
+                    result.push({
+                        id: 'minecraft:' + match[2],
+                        name: String(translations[key] || match[2].replace(/_/g, ' ')),
+                        textureType: match[1]
+                    });
+                }
+                return result;
+            }, []);
+            if (catalog.length) mergeExternalCatalog(catalog);
+        } catch (error) {
+            // 本站服务端目录已作为兜底，外部资源失败不阻断编辑器。
+        } finally {
+            window.clearTimeout(timer);
+        }
     }
 
     function setMode(nextMode) {
@@ -430,6 +488,7 @@
         hydrateRecipe(data.recipe);
         renderSlots();
         renderItems();
+        loadExternalCatalog();
     }
 
     root.addEventListener('click', function (event) {

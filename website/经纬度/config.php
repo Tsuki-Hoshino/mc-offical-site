@@ -11,6 +11,6 @@ const ALLOWED_DOCUMENT_EXTENSIONS = ['pdf', 'txt', 'md', 'markdown', 'jpg', 'jpe
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-const SITE_CSS_VERSION = '20260731a';
-const SITE_JS_VERSION = '20260731a';
-const MACHINE_JS_VERSION = '20260724a';
+const SITE_CSS_VERSION = '20260816b';
+const SITE_JS_VERSION = '20260811a';
+const MACHINE_JS_VERSION = '20260811a';

@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $role = in_array($_POST['role'] ?? '', ['editor', 'superadmin'], true) ? (string) $_POST['role'] : 'editor';
         $enabled = !empty($_POST['enabled']) ? 1 : 0;
         if (!preg_match('/^[A-Za-z0-9_.-]{3,32}$/', $username)) $errors[] = '账户名格式不正确。';
-        if ($password !== '' && (strlen($password) < 12 || strlen($password) > 128)) $errors[] = '新密码长度必须为 12-128 位。';
+        if ($password !== '') $errors = array_merge($errors, auth_validate_new_password($password));
         if ($password !== (string) ($_POST['password_confirm'] ?? '')) $errors[] = '两次输入的新密码不一致。';
         $enabledSuperadmins = (int) auth_db()->query("SELECT COUNT(*) FROM users WHERE role = 'superadmin' AND enabled = 1")->fetchColumn();
         $removesLastSuperadmin = $account['role'] === 'superadmin' && (int) $account['enabled'] === 1 && ($role !== 'superadmin' || $enabled !== 1) && $enabledSuperadmins <= 1;
@@ -68,10 +68,10 @@ $csrf = auth_csrf_token();
     <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
     <meta name="theme-color" content="#f9a8d4">
     <title>管理账户 | 后台 | 示例服务器</title>
-    <link rel="stylesheet" href="/assets/site.css?v=20260731a">
+    <link rel="stylesheet" href="/assets/site.css?v=20260816b">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260724a"></script>
-    <script src="/assets/site.js?v=20260731a"></script>
+    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site.js?v=20260811a"></script>
 </head>
 <body class="admin-page machine-page">
 <header class="topbar"><div class="shell"><a class="brand" href="/">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/" aria-current="page">后台</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= admin_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
@@ -102,6 +102,6 @@ $csrf = auth_csrf_token();
 </script>
 <?php endif; ?>
 </main>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>

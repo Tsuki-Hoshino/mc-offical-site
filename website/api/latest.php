@@ -11,5 +11,5 @@ if ($record === null) {
     sync_json_response(['ok' => false, 'error' => 'not_found', 'type' => $type], 404);
 }
 
-unset($record['remote_addr']);
+$record = sync_public_record($record);
 sync_json_response(['ok' => true] + $record);

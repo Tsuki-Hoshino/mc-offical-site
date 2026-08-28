@@ -17,7 +17,7 @@ Minecraft 机器坐标登记子站，适配站点公用 CSS、PJAX 导航与平�
 - 上传文件保存在站点目录外，通过 `file.php` 按登记记录公开读取。
 - 旧版 SQLite 数据库在首次连接 MySQL 时自动迁移，迁移后保留为 `.migrated` 备份。
 
-生产环境的私有目录为 `/www/wwwroot/mc-site-private`。Windows 本地调试使用站点根目录下的 `data`，该目录不会进入部署包。
+生产环境请将私有目录放在 Web 根目录之外。Windows 本地调试使用站点根目录下的 `data`，该目录不会进入部署包。
 
 ## 兼容性
 

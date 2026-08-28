@@ -70,27 +70,36 @@ function sync_guard_prefix(): string
     return "<?php http_response_code(404); exit; ?>\n";
 }
 
-function sync_write_data(string $type, array $payload): void
+function sync_store_data(string $type, array $payload): void
 {
     $dir = sync_storage_dir();
     if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-        sync_json_response(['ok' => false, 'error' => 'storage_unavailable'], 500);
+        throw new RuntimeException('storage_unavailable');
     }
 
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     if ($json === false) {
-        sync_json_response(['ok' => false, 'error' => 'json_encode_failed'], 500);
+        throw new RuntimeException('json_encode_failed');
     }
 
     $path = sync_data_path($type);
     $tmp = $path . '.' . bin2hex(random_bytes(6)) . '.tmp';
     if (file_put_contents($tmp, sync_guard_prefix() . $json, LOCK_EX) === false) {
-        sync_json_response(['ok' => false, 'error' => 'write_failed'], 500);
+        throw new RuntimeException('write_failed');
     }
 
     if (!rename($tmp, $path)) {
         @unlink($tmp);
-        sync_json_response(['ok' => false, 'error' => 'replace_failed'], 500);
+        throw new RuntimeException('replace_failed');
+    }
+}
+
+function sync_write_data(string $type, array $payload): void
+{
+    try {
+        sync_store_data($type, $payload);
+    } catch (Throwable $error) {
+        sync_json_response(['ok' => false, 'error' => $error->getMessage()], 500);
     }
 }
 
@@ -113,6 +122,34 @@ function sync_read_data(string $type): ?array
 
     $data = json_decode($raw, true);
     return is_array($data) ? $data : null;
+}
+
+function sync_public_record(array $record): array
+{
+    unset($record['remote_addr']);
+    if (($record['type'] ?? '') !== 'status' || !is_array($record['payload'] ?? null)) {
+        return $record;
+    }
+
+    $payload = $record['payload'];
+    $activeNames = [];
+    foreach (['online_players', 'bots'] as $key) {
+        foreach (is_array($payload[$key] ?? null) ? $payload[$key] : [] as $name) {
+            if (is_string($name) && $name !== '') {
+                $activeNames[strtolower($name)] = true;
+            }
+        }
+    }
+
+    $skinUrls = [];
+    foreach (is_array($payload['skin_urls'] ?? null) ? $payload['skin_urls'] : [] as $name => $url) {
+        if (isset($activeNames[strtolower((string) $name)]) && is_string($url)) {
+            $skinUrls[$name] = $url;
+        }
+    }
+    $payload['skin_urls'] = $skinUrls;
+    $record['payload'] = $payload;
+    return $record;
 }
 
 function sync_request_token(): string

@@ -1,8 +1,8 @@
 window.MCSiteConfig = {
     siteName: '示例服务器',
     serverName: '生存服务器',
-    serverAddress: 'play.example.com',
-    editionLabel: 'MINECRAFT JAVA EDITION',
+    serverAddress: 'mc.example.com',
+    editionLabel: 'MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET',
     icpNumber: '',
     policeNumber: '',
     policeCode: '',

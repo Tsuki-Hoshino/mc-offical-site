@@ -8,6 +8,10 @@ function auth_session_start(): void
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_trans_sid', '0');
+    ini_set('session.cookie_lifetime', '0');
     session_name('mc_machine_session');
     session_set_cookie_params([
         'lifetime' => 0,
@@ -63,7 +67,7 @@ function auth_client_ip(): string
         }
     }
 
-    return 'unknown';
+    return '0.0.0.0';
 }
 
 function auth_current_user(): ?array
@@ -213,6 +217,28 @@ function auth_hash_password(string $password): string
     return 'pbkdf2_sha256$' . PASSWORD_ITERATIONS . '$' . base64_encode($salt) . '$' . base64_encode($hash);
 }
 
+function auth_validate_new_password(string $password): array
+{
+    $errors = [];
+    $length = mb_strlen($password, 'UTF-8');
+    if ($length < 6 || $length > 128) {
+        $errors[] = '密码长度必须为 6-128 位。';
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        $errors[] = '密码必须包含数字。';
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        $errors[] = '密码必须包含大写字母。';
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        $errors[] = '密码必须包含小写字母。';
+    }
+    if (!preg_match('/[^A-Za-z0-9]/u', $password)) {
+        $errors[] = '密码必须包含特殊符号。';
+    }
+    return $errors;
+}
+
 function auth_verify_password(string $password, string $stored): bool
 {
     $parts = explode('$', $stored);
@@ -312,7 +338,14 @@ function auth_logout(): void
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000, $params['path'], '', $params['secure'], $params['httponly']);
+        setcookie(session_name(), '', [
+            'expires' => time() - 42000,
+            'path' => $params['path'] ?: '/',
+            'domain' => $params['domain'] ?? '',
+            'secure' => (bool) $params['secure'],
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
     }
     session_destroy();
 }

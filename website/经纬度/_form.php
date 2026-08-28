@@ -22,7 +22,8 @@ function field_value(array $machine, string $field): string
         <div class="machine-section-head"><span>01</span><div><h2>基本信息</h2><p>用于在列表中快速识别这台机器</p></div></div>
         <div class="machine-fields two">
             <label><span>机器名称</span><input type="text" name="machine_name" required maxlength="120" autocomplete="off" value="<?= h(field_value($machine, 'machine_name')) ?>" placeholder="例如：西北区刷铁机"></label>
-            <label><span>登记玩家</span><input type="text" name="player_name" required maxlength="64" autocomplete="username" value="<?= h(field_value($machine, 'player_name')) ?>" placeholder="游戏内名称"></label>
+            <?php $selectedPlayer = field_value($machine, 'player_name'); $playerOptions = machine_player_options(); ?>
+            <label><span>登记玩家</span><select name="player_name" required><option value="">选择已有账户</option><?php $knownPlayer = false; foreach ($playerOptions as $playerOption): $selected = $selectedPlayer === $playerOption['value']; $knownPlayer = $knownPlayer || $selected; ?><option value="<?= h($playerOption['value']) ?>" <?= $selected ? 'selected' : '' ?>><?= h($playerOption['label']) ?></option><?php endforeach; ?><?php if ($selectedPlayer !== '' && !$knownPlayer): ?><option value="<?= h($selectedPlayer) ?>" selected><?= h($selectedPlayer) ?>（历史记录）</option><?php endif; ?></select></label>
         </div>
     </section>
 

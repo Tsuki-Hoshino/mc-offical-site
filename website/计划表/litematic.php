@@ -1,59 +1,381 @@
 <?php
 declare(strict_types=1);
 
+const PLAN_LITEMATIC_MAX_DECOMPRESSED_BYTES = 128 * 1024 * 1024;
+const PLAN_LITEMATIC_MAX_BLOCKS = 50000000;
+const PLAN_LITEMATIC_MAX_PALETTE_SIZE = 65536;
+const PLAN_NBT_MAX_DEPTH = 64;
+const PLAN_NBT_MAX_COLLECTION_ITEMS = 10000000;
+
+final class PlanNbtLongArray
+{
+    public function __construct(
+        private string $data,
+        private int $offset,
+        private int $count,
+    ) {
+    }
+
+    public function count(): int
+    {
+        return $this->count;
+    }
+
+    public function get(int $index): int
+    {
+        if ($index < 0 || $index >= $this->count) {
+            throw new RuntimeException('投影方块状态数据不完整');
+        }
+
+        return unpack('Jvalue', substr($this->data, $this->offset + ($index * 8), 8))['value'];
+    }
+}
+
 final class PlanNbtReader
 {
-    private int $offset=0;
-    public function __construct(private string $data){}
-    private function take(int $n):string{if($this->offset+$n>strlen($this->data))throw new RuntimeException('NBT 文件不完整');$v=substr($this->data,$this->offset,$n);$this->offset+=$n;return $v;}
-    private function byte():int{$v=ord($this->take(1));return $v>127?$v-256:$v;}
-    private function ubyte():int{return ord($this->take(1));}
-    private function short():int{$v=unpack('n',$this->take(2))[1];return $v>32767?$v-65536:$v;}
-    private function int():int{$v=unpack('N',$this->take(4))[1];return $v>2147483647?$v-4294967296:$v;}
-    private function long():int{return unpack('J',$this->take(8))[1];}
-    private function string():string{$n=$this->short();if($n<0)throw new RuntimeException('NBT 字符串长度无效');return $this->take($n);}
-    private function tag(int $type):mixed{return match($type){1=>$this->byte(),2=>$this->short(),3=>$this->int(),4=>$this->long(),5=>unpack('G',$this->take(4))[1],6=>unpack('E',$this->take(8))[1],7=>$this->byteArray(),8=>$this->string(),9=>$this->list(),10=>$this->compound(),11=>$this->intArray(),12=>$this->longArray(),default=>throw new RuntimeException('未知 NBT 标签: '.$type)};}
-    private function byteArray():array{$n=$this->int();if($n<0||$n>100000000)throw new RuntimeException('NBT 数组过大');return array_values(unpack('c*',$this->take($n)));}
-    private function intArray():array{$n=$this->int();if($n<0||$n>25000000)throw new RuntimeException('NBT 数组过大');$out=[];for($i=0;$i<$n;$i++)$out[]=$this->int();return $out;}
-    private function longArray():array{$n=$this->int();if($n<0||$n>12500000)throw new RuntimeException('NBT 数组过大');$out=[];for($i=0;$i<$n;$i++)$out[]=$this->long();return $out;}
-    private function list():array{$type=$this->ubyte();$n=$this->int();if($n<0||$n>10000000)throw new RuntimeException('NBT 列表过大');$out=[];for($i=0;$i<$n;$i++)$out[]=$this->tag($type);return $out;}
-    private function compound():array{$out=[];while(true){$type=$this->ubyte();if($type===0)break;$out[$this->string()]=$this->tag($type);}return $out;}
-    public function root():array{if($this->ubyte()!==10)throw new RuntimeException('NBT 根标签不是 Compound');$this->string();return $this->compound();}
-}
+    private int $offset = 0;
+    private int $length;
 
-function plan_parse_litematic(string $path):array
-{
-    $compressed=file_get_contents($path);if($compressed===false)throw new RuntimeException('无法读取上传文件');
-    $raw=@gzdecode($compressed);if($raw===false)throw new RuntimeException('文件不是有效的 gzip Litematica 投影');
-    if(strlen($raw)>128*1024*1024)throw new RuntimeException('投影解压后超过 128MB 限制');
-    $root=(new PlanNbtReader($raw))->root();$regions=$root['Regions']??null;
-    if(!is_array($regions)||!$regions)throw new RuntimeException('投影中没有 Regions 数据');
-    $counts=[];
-    foreach($regions as $region){
-        if(!is_array($region))continue;$palette=$region['BlockStatePalette']??[];$states=$region['BlockStates']??[];$size=$region['Size']??[];
-        if(!is_array($palette)||!is_array($states)||!is_array($size)||!$palette)continue;
-        $total=abs((int)($size['x']??0))*abs((int)($size['y']??0))*abs((int)($size['z']??0));
-        if($total>50000000)throw new RuntimeException('单个投影区域超过 5000 万方块限制');
-        $bits=max(2,(int)ceil(log(max(1,count($palette)),2)));$mask=(1<<$bits)-1;$bit=0;
-        for($i=0;$i<$total;$i++){
-            $word=intdiv($bit,64);$shift=$bit%64;
-            $value=(($states[$word]??0)>>$shift)&$mask;
-            if($shift+$bits>64){$low=64-$shift;$value|=(($states[$word+1]??0)&((1<<($bits-$low))-1))<<$low;}
-            $bit+=$bits;$state=is_array($palette[$value]??null)?$palette[$value]:[];$name=(string)($state['Name']??'minecraft:air');
-            if($name!=='minecraft:air')$counts[$name]=($counts[$name]??0)+1;
-            $properties=is_array($state['Properties']??null)?$state['Properties']:[];
-            if(($properties['waterlogged']??null)==='true')$counts['minecraft:water']=($counts['minecraft:water']??0)+1;
+    public function __construct(private string $data)
+    {
+        $this->length = strlen($data);
+    }
+
+    private function take(int $bytes): string
+    {
+        if ($bytes < 0 || $bytes > $this->length - $this->offset) {
+            throw new RuntimeException('NBT 文件不完整');
+        }
+
+        $value = substr($this->data, $this->offset, $bytes);
+        $this->offset += $bytes;
+        return $value;
+    }
+
+    private function byte(): int
+    {
+        return unpack('cvalue', $this->take(1))['value'];
+    }
+
+    private function ubyte(): int
+    {
+        return ord($this->take(1));
+    }
+
+    private function ushort(): int
+    {
+        return unpack('nvalue', $this->take(2))['value'];
+    }
+
+    private function short(): int
+    {
+        $value = $this->ushort();
+        return $value > 32767 ? $value - 65536 : $value;
+    }
+
+    private function int(): int
+    {
+        $value = unpack('Nvalue', $this->take(4))['value'];
+        return $value > 2147483647 ? $value - 4294967296 : $value;
+    }
+
+    private function long(): int
+    {
+        return unpack('Jvalue', $this->take(8))['value'];
+    }
+
+    private function string(): string
+    {
+        return $this->take($this->ushort());
+    }
+
+    private function collectionLength(int $itemBytes, string $label): int
+    {
+        $count = $this->int();
+        if ($count < 0 || $count > PLAN_NBT_MAX_COLLECTION_ITEMS) {
+            throw new RuntimeException($label . '过大');
+        }
+        if ($itemBytes > 0 && $count > intdiv($this->length - $this->offset, $itemBytes)) {
+            throw new RuntimeException('NBT 文件不完整');
+        }
+        return $count;
+    }
+
+    private function tag(int $type, int $depth): mixed
+    {
+        if ($depth > PLAN_NBT_MAX_DEPTH) {
+            throw new RuntimeException('NBT 嵌套层级过深');
+        }
+
+        return match ($type) {
+            1 => $this->byte(),
+            2 => $this->short(),
+            3 => $this->int(),
+            4 => $this->long(),
+            5 => unpack('Gvalue', $this->take(4))['value'],
+            6 => unpack('Evalue', $this->take(8))['value'],
+            7 => $this->byteArray(),
+            8 => $this->string(),
+            9 => $this->list($depth + 1),
+            10 => $this->compound($depth + 1),
+            11 => $this->intArray(),
+            12 => $this->longArray(),
+            default => throw new RuntimeException('未知 NBT 标签类型'),
+        };
+    }
+
+    private function byteArray(): string
+    {
+        return $this->take($this->collectionLength(1, 'NBT ByteArray'));
+    }
+
+    private function intArray(): string
+    {
+        return $this->take($this->collectionLength(4, 'NBT IntArray') * 4);
+    }
+
+    private function longArray(): PlanNbtLongArray
+    {
+        $count = $this->collectionLength(8, 'NBT LongArray');
+        $array = new PlanNbtLongArray($this->data, $this->offset, $count);
+        $this->offset += $count * 8;
+        return $array;
+    }
+
+    private function list(int $depth): array
+    {
+        $type = $this->ubyte();
+        $count = $this->collectionLength(0, 'NBT List');
+        if ($type === 0 && $count !== 0) {
+            throw new RuntimeException('NBT List 类型无效');
+        }
+
+        $output = [];
+        for ($index = 0; $index < $count; $index++) {
+            $output[] = $this->tag($type, $depth);
+        }
+        return $output;
+    }
+
+    private function compound(int $depth): array
+    {
+        if ($depth > PLAN_NBT_MAX_DEPTH) {
+            throw new RuntimeException('NBT 嵌套层级过深');
+        }
+
+        $output = [];
+        $tagCount = 0;
+        while (true) {
+            $type = $this->ubyte();
+            if ($type === 0) {
+                return $output;
+            }
+            if (++$tagCount > PLAN_NBT_MAX_COLLECTION_ITEMS) {
+                throw new RuntimeException('NBT Compound 标签过多');
+            }
+            $output[$this->string()] = $this->tag($type, $depth);
         }
     }
-    foreach(['water'=>'water_bucket','lava'=>'lava_bucket'] as $from=>$to){$key='minecraft:'.$from;if(isset($counts[$key])){$target='minecraft:'.$to;$counts[$target]=($counts[$target]??0)+$counts[$key];unset($counts[$key]);}}
-    arsort($counts);$out=[];foreach($counts as $id=>$count)$out[]=['blockId'=>$id,'displayName'=>plan_block_name($id),'count'=>$count,'boxes'=>$count/1728,'stacks'=>$count/64];
-    return $out;
+
+    public function root(): array
+    {
+        if ($this->ubyte() !== 10) {
+            throw new RuntimeException('NBT 根标签不是 Compound');
+        }
+        $this->string();
+        return $this->compound(0);
+    }
 }
 
-function plan_block_name(string $id):string
+function plan_read_litematic_gzip(string $path): string
 {
-    static $translations=null;
-    if($translations===null){$file=__DIR__.'/translations.json';$data=is_file($file)?json_decode((string)file_get_contents($file),true):[];$translations=is_array($data['blocks']??null)?$data['blocks']:[];}
-    $key=str_replace('minecraft:','',$id);
-    return (string)($translations[$id]??$translations[$key]??ucwords(str_replace('_',' ',$key)));
+    $handle = @gzopen($path, 'rb');
+    if ($handle === false) {
+        throw new RuntimeException('无法读取上传文件或文件不是有效的 gzip Litematica 投影');
+    }
+
+    $raw = '';
+    try {
+        while (!gzeof($handle)) {
+            $remaining = PLAN_LITEMATIC_MAX_DECOMPRESSED_BYTES + 1 - strlen($raw);
+            if ($remaining <= 0) {
+                throw new RuntimeException('投影解压后超过 128MB 限制');
+            }
+            $chunk = gzread($handle, min(1024 * 1024, $remaining));
+            if ($chunk === false || ($chunk === '' && !gzeof($handle))) {
+                throw new RuntimeException('投影 gzip 数据损坏');
+            }
+            $raw .= $chunk;
+        }
+    } finally {
+        gzclose($handle);
+    }
+
+    if (strlen($raw) > PLAN_LITEMATIC_MAX_DECOMPRESSED_BYTES) {
+        throw new RuntimeException('投影解压后超过 128MB 限制');
+    }
+    return $raw;
+}
+
+function plan_decode_litematic_region(
+    PlanNbtLongArray $states,
+    array $palette,
+    int $totalBlocks,
+    int $bitsPerEntry,
+): ?array {
+    $mask = (1 << $bitsPerEntry) - 1;
+    $counts = [];
+
+    for ($index = 0; $index < $totalBlocks; $index++) {
+        $bitIndex = $index * $bitsPerEntry;
+        $wordIndex = intdiv($bitIndex, 64);
+        $shift = $bitIndex % 64;
+        if ($shift + $bitsPerEntry <= 64) {
+            $paletteIndex = ($states->get($wordIndex) >> $shift) & $mask;
+        } else {
+            $lowBits = 64 - $shift;
+            $lowMask = (1 << $lowBits) - 1;
+            $highMask = (1 << ($bitsPerEntry - $lowBits)) - 1;
+            $paletteIndex = (($states->get($wordIndex) >> $shift) & $lowMask)
+                | (($states->get($wordIndex + 1) & $highMask) << $lowBits);
+        }
+
+        $state = $palette[$paletteIndex] ?? null;
+        $blockId = is_array($state) ? ($state['Name'] ?? null) : null;
+        if (!is_string($blockId) || $blockId === '') {
+            return null;
+        }
+        if ($blockId !== 'minecraft:air') {
+            $counts[$blockId] = ($counts[$blockId] ?? 0) + 1;
+        }
+    }
+
+    return $counts;
+}
+
+function plan_parse_litematic(string $path): array
+{
+    $root = (new PlanNbtReader(plan_read_litematic_gzip($path)))->root();
+    $regions = $root['Regions'] ?? null;
+    if (!is_array($regions) || $regions === []) {
+        throw new RuntimeException('投影中没有 Regions 数据');
+    }
+
+    $counts = [];
+    $decodedBlocks = 0;
+    foreach ($regions as $region) {
+        if (!is_array($region)) {
+            throw new RuntimeException('投影区域格式无效');
+        }
+
+        $palette = $region['BlockStatePalette'] ?? null;
+        $states = $region['BlockStates'] ?? null;
+        $size = $region['Size'] ?? null;
+        if (!is_array($palette) || !$states instanceof PlanNbtLongArray || !is_array($size) || $palette === []) {
+            throw new RuntimeException('投影区域缺少方块状态数据');
+        }
+
+        $paletteSize = count($palette);
+        if ($paletteSize > PLAN_LITEMATIC_MAX_PALETTE_SIZE) {
+            throw new RuntimeException('投影方块调色板过大');
+        }
+
+        $sizeX = abs((int) ($size['x'] ?? 0));
+        $sizeY = abs((int) ($size['y'] ?? 0));
+        $sizeZ = abs((int) ($size['z'] ?? 0));
+        if ($sizeX === 0 || $sizeY === 0 || $sizeZ === 0) {
+            continue;
+        }
+        if ($sizeX > PLAN_LITEMATIC_MAX_BLOCKS
+            || $sizeY > intdiv(PLAN_LITEMATIC_MAX_BLOCKS, $sizeX)
+            || $sizeZ > intdiv(PLAN_LITEMATIC_MAX_BLOCKS, $sizeX * $sizeY)) {
+            throw new RuntimeException('投影总方块数超过 5000 万限制');
+        }
+
+        $totalBlocks = $sizeX * $sizeY * $sizeZ;
+        if ($decodedBlocks > PLAN_LITEMATIC_MAX_BLOCKS - $totalBlocks) {
+            throw new RuntimeException('投影总方块数超过 5000 万限制');
+        }
+        $decodedBlocks += $totalBlocks;
+
+        $bitsPerEntry = max(2, strlen(decbin($paletteSize - 1)));
+        $requiredLongs = intdiv(($totalBlocks * $bitsPerEntry) + 63, 64);
+        if ($states->count() < $requiredLongs) {
+            throw new RuntimeException('投影方块状态数据不完整');
+        }
+
+        $regionCounts = plan_decode_litematic_region(
+            $states,
+            $palette,
+            $totalBlocks,
+            $bitsPerEntry,
+        );
+        if ($regionCounts === null) {
+            throw new RuntimeException('无法读取投影中的方块数据，请确认文件完整后重试');
+        }
+        foreach ($regionCounts as $blockId => $count) {
+            $counts[$blockId] = ($counts[$blockId] ?? 0) + $count;
+        }
+    }
+
+    foreach (['water' => 'water_bucket', 'lava' => 'lava_bucket'] as $source => $target) {
+        $sourceId = 'minecraft:' . $source;
+        if (isset($counts[$sourceId])) {
+            $targetId = 'minecraft:' . $target;
+            $counts[$targetId] = ($counts[$targetId] ?? 0) + $counts[$sourceId];
+            unset($counts[$sourceId]);
+        }
+    }
+
+    arsort($counts, SORT_NUMERIC);
+    $materials = [];
+    foreach ($counts as $blockId => $count) {
+        $stackSize = plan_material_stack_size($blockId);
+        $materials[] = [
+            'blockId' => $blockId,
+            'displayName' => plan_block_name($blockId),
+            'count' => $count,
+            'boxes' => (int) ceil($count / (27 * $stackSize)),
+            'stacks' => (int) ceil($count / $stackSize),
+        ];
+    }
+    return $materials;
+}
+
+function plan_material_stack_size(string $id): int
+{
+    $itemId = str_contains($id, ':') ? substr($id, strpos($id, ':') + 1) : $id;
+    if ($itemId === 'cake'
+        || $itemId === 'water_bucket'
+        || $itemId === 'lava_bucket'
+        || str_ends_with($itemId, '_bed')
+        || $itemId === 'shulker_box'
+        || str_ends_with($itemId, '_shulker_box')) {
+        return 1;
+    }
+    if (str_ends_with($itemId, '_sign')
+        || str_ends_with($itemId, '_hanging_sign')
+        || str_ends_with($itemId, '_banner')) {
+        return 16;
+    }
+    return 64;
+}
+
+function plan_block_name(string $id): string
+{
+    static $translations = null;
+    if ($translations === null) {
+        $file = __DIR__ . '/translations.json';
+        $data = is_file($file) ? json_decode((string) file_get_contents($file), true) : [];
+        $translations = [
+            'blocks' => is_array($data['blocks'] ?? null) ? $data['blocks'] : [],
+            'items' => is_array($data['items'] ?? null) ? $data['items'] : [],
+        ];
+    }
+
+    $normalized = str_starts_with($id, 'minecraft:') ? $id : 'minecraft:' . $id;
+    $fallback = str_replace('minecraft:', '', $normalized);
+    return (string) ($translations['blocks'][$normalized]
+        ?? $translations['items'][$normalized]
+        ?? str_replace('_', ' ', $fallback));
 }

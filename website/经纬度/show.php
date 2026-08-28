@@ -55,9 +55,15 @@ render_site_header($machine['machine_name']);
         </div>
         <aside class="machine-photo">
             <h2>机器照片</h2>
-            <?php if ($machine['photo_path']): ?><a href="<?= machine_file_url($id, 'photo') ?>" target="_blank" rel="noopener"><img src="<?= machine_file_url($id, 'photo') ?>" alt="<?= h($machine['machine_name']) ?> 机器照片"></a><?php else: ?><div class="machine-photo-empty">暂无照片</div><?php endif; ?>
+            <?php if ($machine['photo_path']): ?><a class="machine-photo-link" href="<?= machine_file_url($id, 'photo') ?>" aria-haspopup="dialog" data-machine-photo><img src="<?= machine_file_url($id, 'photo') ?>" alt="<?= h($machine['machine_name']) ?> 机器照片" loading="lazy" decoding="async"></a><?php else: ?><div class="machine-photo-empty">暂无照片</div><?php endif; ?>
             <dl><div><dt>创建时间</dt><dd><?= h(display_time($machine['created_at'])) ?></dd></div><div><dt>记录编号</dt><dd>#<?= $id ?></dd></div></dl>
         </aside>
     </div>
 </main>
+<?php if ($machine['photo_path']): ?>
+<dialog class="recipe-viewer machine-image-viewer" id="machine-image-viewer" aria-labelledby="machine-image-viewer-title">
+    <div class="recipe-viewer-bar"><strong id="machine-image-viewer-title"><?= h($machine['machine_name']) ?> 机器照片</strong><button class="recipe-viewer-close" type="button" aria-label="关闭大图" title="关闭大图"><span aria-hidden="true">&times;</span></button></div>
+    <div class="recipe-viewer-body"><div class="recipe-viewer-stage"><img src="" alt="" draggable="false"></div></div>
+</dialog>
+<?php endif; ?>
 <?php render_site_footer(); ?>

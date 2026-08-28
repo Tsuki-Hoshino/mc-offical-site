@@ -158,4 +158,98 @@
             }
         });
     });
+
+    const photoLink = document.querySelector('[data-machine-photo]');
+    const viewer = document.getElementById('machine-image-viewer');
+    if (photoLink && viewer && typeof viewer.showModal === 'function') {
+        const stage = viewer.querySelector('.recipe-viewer-stage');
+        const image = viewer.querySelector('img');
+        const closeButton = viewer.querySelector('.recipe-viewer-close');
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let dragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        function applyTransform() {
+            image.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
+            image.classList.toggle('zoomed', zoom > 1);
+        }
+
+        function resetTransform() {
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            dragging = false;
+            image.classList.remove('dragging');
+            applyTransform();
+        }
+
+        function unlockPage() {
+            document.documentElement.classList.remove('recipe-viewer-open');
+            window.dispatchEvent(new Event('site:scroll-unlock'));
+        }
+
+        photoLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            const preview = photoLink.querySelector('img');
+            image.src = photoLink.href;
+            image.alt = preview ? preview.alt : '';
+            resetTransform();
+            viewer.showModal();
+            document.documentElement.classList.add('recipe-viewer-open');
+            window.dispatchEvent(new Event('site:scroll-lock'));
+        });
+
+        closeButton.addEventListener('click', function () { viewer.close(); });
+        viewer.addEventListener('cancel', function (event) {
+            event.preventDefault();
+            viewer.close();
+        });
+        viewer.addEventListener('click', function (event) {
+            if (event.target === viewer || event.target === stage) viewer.close();
+        });
+        viewer.addEventListener('close', function () {
+            image.removeAttribute('src');
+            image.alt = '';
+            resetTransform();
+            unlockPage();
+        });
+        stage.addEventListener('wheel', function (event) {
+            event.preventDefault();
+            const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+            zoom = Math.min(5, Math.max(1, zoom * factor));
+            if (zoom === 1) {
+                panX = 0;
+                panY = 0;
+            }
+            applyTransform();
+        }, { passive: false });
+        image.addEventListener('pointerdown', function (event) {
+            if (zoom <= 1 || event.button !== 0) return;
+            event.preventDefault();
+            dragging = true;
+            dragStartX = event.clientX - panX;
+            dragStartY = event.clientY - panY;
+            image.classList.add('dragging');
+            image.setPointerCapture(event.pointerId);
+        });
+        image.addEventListener('pointermove', function (event) {
+            if (!dragging) return;
+            panX = event.clientX - dragStartX;
+            panY = event.clientY - dragStartY;
+            applyTransform();
+        });
+        function stopDragging(event) {
+            if (!dragging) return;
+            dragging = false;
+            image.classList.remove('dragging');
+            if (image.hasPointerCapture(event.pointerId)) image.releasePointerCapture(event.pointerId);
+        }
+        image.addEventListener('pointerup', stopDragging);
+        image.addEventListener('pointercancel', stopDragging);
+        image.addEventListener('dblclick', resetTransform);
+        window.addEventListener('site:before-swap', unlockPage, { once: true });
+    }
 }());

@@ -10,20 +10,20 @@
     <meta name="theme-color" content="#f9a8d4">
 <meta name="description" content="生存服务器 Minecraft 服务器官网，提供实时状态、玩家统计。">
 <title>Minecraft 服务器官网 | 示例服务器</title>
-<link rel="stylesheet" href="./assets/site.css?v=20260731a">
+<link rel="stylesheet" href="./assets/site.css?v=20260816b">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260724a"></script>
-    <script src="/assets/server-status.js?v=20260723e"></script>
-<script src="./assets/site.js?v=20260731a"></script>
+    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/server-status.js?v=20260812c"></script>
+<script src="./assets/site.js?v=20260811a"></script>
 </head>
 <body class="home-page official-home">
 <header class="topbar"><div class="shell"><a class="brand" href="./">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="./" aria-current="page">首页</a><a href="./状态/">实时状态</a><a href="./统计数据/">玩家统计</a><a href="./配方/">配方</a><a href="./附魔计算/">附魔计算</a><a href="./经纬度/">经纬度</a><a href="./计划表/">计划表</a></nav></div></header>
 <main class="shell">
 <section class="official-hero">
   <div class="official-intro">
-    <div class="official-title"><span class="server-icon server-icon-placeholder" aria-hidden="true">MC</span><div><p class="official-label">MINECRAFT JAVA EDITION</p><h1>生存服务器</h1><p class="official-subtitle" id="home-motd">正在读取服务器 MOTD</p></div></div>
+  <div class="official-title"><span class="server-icon" aria-hidden="true">MC</span><div><p class="official-label">MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET</p><h1>生存服务器</h1><p class="official-subtitle" id="home-motd">正在读取服务器 MOTD</p></div></div>
     <div class="connect-box">
-      <div><span>服务器地址</span><strong>play.example.com</strong></div>
+      <div><span>服务器地址</span><strong>mc.example.com</strong></div>
       <button id="copy-address" type="button">复制地址</button>
     </div>
   </div>
@@ -52,7 +52,7 @@
   <div class="official-grid">
     <a class="official-link" href="./状态/"><span><strong>实时状态</strong><small>MSPT、资源占用与网络流量</small></span><b aria-hidden="true">→</b></a>
     <a class="official-link" href="./统计数据/"><span><strong>玩家统计</strong><small>排行榜、汇总与原版详细统计</small></span><b aria-hidden="true">→</b></a>
-    <a class="official-link" href="./配方/"><span><strong>配方搜索</strong><small>查询服务器合成配方</small></span><b aria-hidden="true">→</b></a>
+    <a class="official-link recipe-link" href="./配方/"><span><strong>配方搜索</strong><small>查询服务器合成配方</small></span><span class="official-recipes" aria-hidden="true"><img src="./配方/images/001-hn__bedrock.png" alt=""><img src="./配方/images/002-hn__budding_amethyst.png" alt=""><img src="./配方/images/007-hn__reinforced_deepslate.png" alt=""><img src="./配方/images/009-hn__villager_spawn_egg.png" alt=""></span></a>
     <a class="official-link" href="./附魔计算/"><span><strong>附魔计算</strong><small>计算铁砧合并顺序与经验消耗</small></span><b aria-hidden="true">→</b></a>
     <a class="official-link" href="./经纬度/"><span><strong>经纬度</strong><small>登记机器位置并换算维度坐标</small></span><b aria-hidden="true">→</b></a>
     <a class="official-link" href="./计划表/"><span><strong>计划表</strong><small>建筑投影、材料统计与协作认领</small></span><b aria-hidden="true">→</b></a>
@@ -61,10 +61,10 @@
 </main>
 <footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
 <script>
-let clockOffset=null,skinUrls=new Map(),onlineSince=new Map();
+let clockOffset=null,skinUrls=new Map(),onlineSince=new Map(),hasStatus=false,refreshInFlight=false,lastFreshAt=0;
 const text=(id,value)=>document.getElementById(id).textContent=value;
 const time=value=>{const date=new Date(value);return Number.isNaN(date.getTime())?'-':date.toLocaleString('zh-CN',{hour12:false})};
-const isFresh=record=>window.MCServerStatus.isOnline(record);
+const isReportedOnline=record=>window.MCServerStatus.isOnline(record);
 function connectionDuration(value){
   const startedAt=new Date(value).getTime();
   if(!Number.isFinite(startedAt))return '在线时间未知';
@@ -113,15 +113,41 @@ function showOffline(){
   text('home-updated','服务器已离线');
   renderOnline('online-players',[],'服务器已离线');
   renderOnline('online-bots',[],'服务器已离线');
+  lastFreshAt=0;
 }
-async function refresh(){
+function showUnavailable(clearData=false){
+  const state=document.getElementById('server-state');
+  state.textContent='状态暂时不可用';
+  state.className='server-state';
+  text('home-updated','连接暂时不可用');
+  if(clearData||!hasStatus){
+    clockOffset=null;onlineSince=new Map();skinUrls=new Map();
+    ['online-count','bot-count','home-mspt','server-clock'].forEach(id=>text(id,'-'));
+    text('home-motd','状态暂时不可用');
+    renderOnline('online-players',[],'状态暂时不可用');
+    renderOnline('online-bots',[],'状态暂时不可用');
+    lastFreshAt=0;
+  }
+}
+async function refresh(streamRecord=null){
+  if(refreshInFlight&&!streamRecord)return;
+  if(!streamRecord)refreshInFlight=true;
   try{
-    const response=await fetch('./api/latest.php?type=status',{cache:'no-store'});
-    if(!response.ok)throw new Error(response.status);
-    const record=await response.json(),data=record.payload||{},runtime=data.runtime||{},state=document.getElementById('server-state');
-    if(!isFresh(record)){showOffline();return}
-    state.textContent=data.online?'服务器在线':'服务器离线';
-    state.className='server-state '+(data.online?'online':'offline');
+    let record=streamRecord;
+    if(!record){
+      const response=await fetch('./api/latest.php?type=status',{cache:'no-store'});
+      if(!response.ok)throw new Error(response.status);
+      record=await response.json();
+    }
+    const data=record.payload||{},runtime=data.runtime||{},state=document.getElementById('server-state');
+    const reportedState=window.MCServerStatus.state(record);
+    if(reportedState!=='online'){
+      if(reportedState==='offline'){showOffline()}else{showUnavailable(true)}
+      hasStatus=true;
+      return
+    }
+    state.textContent='服务器在线';
+    state.className='server-state online';
     text('online-count',data.online_count||0);
     text('bot-count',data.bot_count||0);
     text('home-mspt',runtime.mspt==null?'-':Number(runtime.mspt).toFixed(1)+' ms');
@@ -133,8 +159,13 @@ async function refresh(){
     renderOnline('online-bots',data.bots,'暂无假人在线');
     const serverTime=new Date(runtime.server_time);
     if(!Number.isNaN(serverTime.getTime())){clockOffset=serverTime.getTime()-Date.now();updateClock();updateConnectionTimes()}
+    lastFreshAt=window.MCServerStatus.receivedAt(record);
+    hasStatus=true;
   }catch(error){
-    showOffline();
+    const age=lastFreshAt>0?Date.now()-lastFreshAt:Infinity;
+    if(age>Math.max(5,Number(window.MCSiteConfig&&window.MCSiteConfig.offlineAfterSeconds)||15)*1000){showUnavailable(true);hasStatus=true}else if(!hasStatus){showUnavailable()}
+  }finally{
+    if(!streamRecord)refreshInFlight=false;
   }
 }
 document.querySelector('main').append(document.querySelector('.official-online'));
@@ -143,7 +174,13 @@ document.getElementById('copy-address').addEventListener('click',async event=>{
   try{await navigator.clipboard.writeText((window.MCSiteConfig&&window.MCSiteConfig.serverAddress)||'mc.example.com');button.textContent='已复制'}catch(error){button.textContent='复制失败'}
   setTimeout(()=>button.textContent=original,1500);
 });
-refresh();setInterval(refresh,1000);setInterval(()=>{updateClock();updateConnectionTimes()},1000);
+refresh();
+setInterval(()=>{refresh()},2000);
+setInterval(()=>{
+  updateClock();updateConnectionTimes();
+  const maxAge=Math.max(5,Number(window.MCSiteConfig&&window.MCSiteConfig.offlineAfterSeconds)||15)*1000;
+  if(lastFreshAt>0&&Date.now()-lastFreshAt>maxAge){showUnavailable(true);hasStatus=true}
+},1000);
 </script>
 </body>
 </html>

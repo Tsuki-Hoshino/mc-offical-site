@@ -29,6 +29,9 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         auth_verify_csrf();
+        if (trim((string) ($_POST['terminalKey'] ?? '')) === '') {
+            $_POST['terminalKey'] = (string) ($settings['terminalKey'] ?? '');
+        }
         [$settings, $errors] = site_validate_settings($_POST);
         if (!$errors) {
             site_settings_save($settings, (int) ($user['id'] ?? 0));
@@ -50,10 +53,10 @@ $featureDefinitions = site_feature_definitions();
     <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
     <meta name="theme-color" content="#f9a8d4">
     <title>后台管理 | 示例服务器</title>
-    <link rel="stylesheet" href="/assets/site.css?v=20260731a">
+    <link rel="stylesheet" href="/assets/site.css?v=20260816b">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260724a"></script>
-    <script src="/assets/site.js?v=20260731a"></script>
+    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="/assets/site.js?v=20260811a"></script>
 </head>
 <body class="admin-page machine-page">
 <header class="topbar"><div class="shell"><a class="brand" href="/">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><a class="nav-account" href="/admin/" aria-current="page">后台</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= admin_h(auth_csrf_token()) ?>"><button type="submit">退出</button></form></nav></div></header>
@@ -110,6 +113,16 @@ $featureDefinitions = site_feature_definitions();
             </div>
         </section>
 
+        <section class="admin-panel">
+            <h2>终端</h2>
+            <label><span>面板地址</span><input type="url" name="terminalUrl" maxlength="500" value="<?= admin_h((string) $settings['terminalUrl']) ?>" placeholder="http://"></label>
+            <label><span>面板密钥</span><input type="password" name="terminalKey" maxlength="200" value="" placeholder="留空保持不变" autocomplete="new-password"></label>
+            <div class="admin-fixed">
+                <span>服务器控制台入口</span>
+                <strong>仅超级管理员可见。地址与密钥用于站内连接 MCSManager 守护进程，密钥仅保存在服务器端。</strong>
+            </div>
+        </section>
+
         <section class="admin-panel admin-feature-panel">
             <h2>功能入口</h2>
             <?php foreach ($featureDefinitions as $key => $definition): ?>
@@ -127,6 +140,6 @@ $featureDefinitions = site_feature_definitions();
         </section>
     </form>
 </main>
-<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+<footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>

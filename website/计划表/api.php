@@ -37,9 +37,9 @@ try{$pdo=plan_db();$method=$_SERVER['REQUEST_METHOD']??'GET';
  if($action==='upload_litematic'){
    if(!plan_can_manage($project,$user))out(['error'=>'forbidden'],403);$file=$_FILES['litematic']??null;
    if(!$file||($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)out(['error'=>'请选择有效的 .litematic 文件'],422);
-   if((int)$file['size']>100*1024*1024)out(['error'=>'投影文件不能超过 100MB'],422);
+   if((int)$file['size']>100*1024*1024)out(['error'=>'投影文件不能超过 100MB'],413);
    $filename=basename((string)$file['name']);if(strtolower(pathinfo($filename,PATHINFO_EXTENSION))!=='litematic')out(['error'=>'只允许上传 .litematic 文件'],422);
-   @set_time_limit(60);$materials=plan_parse_litematic((string)$file['tmp_name']);if(!$materials)out(['error'=>'投影中没有可统计的方块'],422);
+   @set_time_limit(60);try{$materials=plan_parse_litematic((string)$file['tmp_name']);}catch(RuntimeException $e){out(['error'=>$e->getMessage()],422);}if(!$materials)out(['error'=>'投影中没有可统计的方块'],422);
    $id=bin2hex(random_bytes(12));$now=date('Y-m-d H:i:s');$total=array_sum(array_column($materials,'count'));
    $pdo->beginTransaction();try{$stmt=$pdo->prepare('INSERT INTO plan_litematics(id,project_id,filename,total_types,total_blocks,created_at) VALUES(?,?,?,?,?,?)');$stmt->execute([$id,$projectId,mb_substr($filename,0,180),count($materials),$total,$now]);$insert=$pdo->prepare('INSERT INTO plan_materials(litematic_id,block_id,display_name,block_count,boxes,stacks) VALUES(?,?,?,?,?,?)');foreach($materials as $m)$insert->execute([$id,$m['blockId'],$m['displayName'],$m['count'],$m['boxes'],$m['stacks']]);$pdo->prepare('UPDATE plan_projects SET updated_at=? WHERE id=?')->execute([$now,$projectId]);$pdo->commit();}catch(Throwable $e){$pdo->rollBack();throw $e;}
    auth_audit('plan_litematic_uploaded',['project_id'=>$projectId,'filename'=>$filename,'blocks'=>$total]);out(['litematic_id'=>$id,'types'=>count($materials),'blocks'=>$total],201);

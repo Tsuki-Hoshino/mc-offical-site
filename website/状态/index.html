@@ -10,14 +10,14 @@
 <meta name="theme-color" content="#f9a8d4">
 <meta name="description" content="生存服务器 实时运行状态。">
 <title>实时状态 | 示例服务器</title>
-<link rel="stylesheet" href="../assets/site.css?v=20260731a">
+<link rel="stylesheet" href="../assets/site.css?v=20260816b">
 <link rel="stylesheet" href="assets/telemetry.css?v=20260723a">
 <script src="../assets/chart.umd.min.js?v=4.5.1"></script>
 <script src="assets/history-charts.js?v=20260722t"></script>
 <script src="/assets/lenis.min.js?v=1.3.25"></script>
-<script src="/assets/site-config.php?v=20260724a"></script>
-<script src="/assets/server-status.js?v=20260723e"></script>
-<script src="../assets/site.js?v=20260731a"></script>
+<script src="/assets/site-config.php?v=20260815i"></script>
+<script src="/assets/server-status.js?v=20260812c"></script>
+<script src="../assets/site.js?v=20260811a"></script>
 </head>
 <body class="status-page">
 <header class="topbar"><div class="shell"><a class="brand" href="../">示例服务器</a><nav class="nav" aria-label="站点导航"><a href="../">首页</a><a href="./" aria-current="page">实时状态</a><a href="../统计数据/">玩家统计</a><a href="../配方/">配方</a><a href="../附魔计算/">附魔计算</a><a href="../经纬度/">经纬度</a><a href="../计划表/">计划表</a></nav></div></header>
@@ -33,10 +33,10 @@
 <a class="metric history-card" href="./图表/?metric=process_memory" data-mini-metric="process_memory"><div class="metric-content"><span>内存</span><strong id="process-memory">-</strong><small>Java 工作集</small></div><canvas class="mini-chart" aria-hidden="true"></canvas></a>
 <div class="metric"><span>运行时间</span><strong id="uptime">-</strong><small>本次启动</small></div>
 </div></section>
-<section class="section"><h2>节点资源</h2><div class="resource-list">
+<section class="section"><h2>节点资源</h2><div class="resource-list" id="resource-list">
 <a class="resource-row history-card" href="./图表/?metric=host_cpu" data-mini-metric="host_cpu"><div class="metric-content"><div class="resource-head"><span>CPU</span><strong id="host-cpu">-</strong></div><div class="bar"><i id="host-cpu-bar"></i></div></div><canvas class="mini-chart" aria-hidden="true"></canvas></a>
 <a class="resource-row history-card" href="./图表/?metric=host_memory" data-mini-metric="host_memory"><div class="metric-content"><div class="resource-head"><span>内存</span><strong id="host-memory">-</strong></div><div class="bar"><i id="host-memory-bar"></i></div></div><canvas class="mini-chart" aria-hidden="true"></canvas></a>
-<div class="resource-row"><div class="resource-head"><span>磁盘 C:</span><strong id="disk">-</strong></div><div class="bar"><i id="disk-bar"></i></div></div>
+<div class="resource-row" data-disk-row><div class="resource-head"><span>磁盘</span><strong>-</strong></div></div>
 </div></section>
 <section class="section"><h2>节点网络</h2><div class="metrics network">
 <a class="metric history-card" href="./图表/?metric=network" data-mini-metric="network"><div class="metric-content"><span>实时下载</span><strong id="rx-rate">-</strong><small>下载与上传历史</small></div><canvas class="mini-chart" aria-hidden="true"></canvas></a>
@@ -50,6 +50,6 @@
 </div></section>
 </main>
 <footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
-<script src="assets/status.js?v=20260723e"></script>
+<script src="assets/status.js?v=20260815a"></script>
 </body>
 </html>

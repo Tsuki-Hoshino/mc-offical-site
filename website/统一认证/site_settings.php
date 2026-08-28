@@ -25,12 +25,14 @@ function site_default_settings(): array
     return [
         'siteName' => '示例服务器',
         'serverName' => '生存服务器',
-        'serverAddress' => 'play.example.com',
-        'editionLabel' => 'MINECRAFT JAVA EDITION',
+        'serverAddress' => 'mc.example.com',
+        'editionLabel' => 'MINECRAFT JAVA EDITION 26.1 FABRIC WITH CARPET',
         'homeDescription' => '生存服务器 Minecraft 服务器官网，提供实时状态、玩家统计。',
         'homeContentTitle' => '服务器内容',
         'homeContentSubtitle' => '状态与玩家统计',
         'offlineAfterSeconds' => 15,
+        'terminalUrl' => '',
+        'terminalKey' => '',
         'features' => array_fill_keys(array_keys(site_feature_definitions()), true),
     ];
 }
@@ -96,6 +98,10 @@ function site_public_settings(): array
     } catch (Throwable $exception) {
         error_log('Site current user lookup failed: ' . $exception->getMessage());
     }
+    if (empty($settings['currentUser']['isSuperadmin'])) {
+        unset($settings['terminalUrl']);
+    }
+    unset($settings['terminalKey']);
     return $settings;
 }
 
@@ -104,6 +110,42 @@ function site_clean_text(array $input, string $key, int $limit): string
     $value = trim((string) ($input[$key] ?? ''));
     if (mb_strlen($value) > $limit) {
         $value = mb_substr($value, 0, $limit);
+    }
+    return $value;
+}
+
+function site_validate_terminal_url(array $input, array &$errors): string
+{
+    $value = trim((string) ($input['terminalUrl'] ?? ''));
+    if ($value === '') {
+        return '';
+    }
+    if (mb_strlen($value) > 500 || preg_match('/[\x00-\x1F\x7F]/', $value)) {
+        $errors[] = '终端地址过长或包含非法字符。';
+        return '';
+    }
+    $parts = parse_url($value);
+    if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])
+        || !in_array(strtolower((string) $parts['scheme']), ['http', 'https'], true)) {
+        $errors[] = '终端地址必须是以 http:// 或 https:// 开头的完整地址。';
+        return '';
+    }
+    if (isset($parts['user']) || isset($parts['pass'])) {
+        $errors[] = '终端地址不能包含账号或密码。';
+        return '';
+    }
+    return $value;
+}
+
+function site_validate_terminal_key(array $input, array &$errors): string
+{
+    $value = trim((string) ($input['terminalKey'] ?? ''));
+    if ($value === '') {
+        return '';
+    }
+    if (mb_strlen($value) > 200 || preg_match('/[\x00-\x20\x7F]/', $value)) {
+        $errors[] = '终端密钥过长或包含非法字符。';
+        return '';
     }
     return $value;
 }
@@ -121,6 +163,8 @@ function site_validate_settings(array $input): array
         'homeContentTitle' => site_clean_text($input, 'homeContentTitle', 60),
         'homeContentSubtitle' => site_clean_text($input, 'homeContentSubtitle', 80),
         'offlineAfterSeconds' => (int) ($input['offlineAfterSeconds'] ?? $defaults['offlineAfterSeconds']),
+        'terminalUrl' => site_validate_terminal_url($input, $errors),
+        'terminalKey' => site_validate_terminal_key($input, $errors),
         'features' => [],
     ];
 

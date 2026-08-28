@@ -19,7 +19,7 @@ $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         verify_csrf();
-        $errors = validate_machine_input($_POST);
+        $errors = validate_machine_input($_POST, [(string) $machine['player_name']]);
         if (!$errors) {
             $x = (float) $_POST['x'];
             $y = (float) $_POST['y'];

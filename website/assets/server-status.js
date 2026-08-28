@@ -11,14 +11,31 @@
 
     function isOnline(record) {
         const data = record && record.payload ? record.payload : {};
+        return data.online === true;
+    }
+
+    function isStale(record) {
         const timestamp = receivedAt(record);
-        if (data.online !== true || !Number.isFinite(timestamp)) return false;
+        if (!Number.isFinite(timestamp)) return true;
         const age = Date.now() - timestamp;
-        return age >= -60000 && age <= offlineAfterMilliseconds();
+        return age < -60000 || age > offlineAfterMilliseconds();
+    }
+
+    function isFresh(record) {
+        return isOnline(record) && !isStale(record);
+    }
+
+    function state(record) {
+        const data = record && record.payload ? record.payload : {};
+        if (data.online === false) return 'offline';
+        return isFresh(record) ? 'online' : 'unavailable';
     }
 
     window.MCServerStatus = {
         isOnline: isOnline,
+        isStale: isStale,
+        isFresh: isFresh,
+        state: state,
         receivedAt: receivedAt
     };
 }());

@@ -16,10 +16,10 @@ $resultCount = count($recipes);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f9a8d4">
     <title>合成表 | 示例服务器</title>
-    <link rel="stylesheet" href="../assets/site.css?v=20260731a">
+    <link rel="stylesheet" href="../assets/site.css?v=20260816b">
     <script src="/assets/lenis.min.js?v=1.3.25"></script>
-    <script src="/assets/site-config.php?v=20260724a"></script>
-    <script src="../assets/site.js?v=20260731a"></script>
+    <script src="/assets/site-config.php?v=20260815i"></script>
+    <script src="../assets/site.js?v=20260811a"></script>
     <script defer src="assets/app.js?v=20260722u"></script>
 </head>
 <body class="recipe-page">
@@ -105,6 +105,6 @@ $resultCount = count($recipes);
                 </div>
             </section>
         </div>
-    </dialog>    <footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"></div></div></footer>
+    </dialog>    <footer class="site-footer"><div class="shell"><span>示例服务器</span><div class="filing"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a><a href="https://beian.mps.gov.cn/#/query/webSearch?code=" target="_blank" rel="noopener noreferrer"></a></div></div></footer>
 </body>
 </html>
