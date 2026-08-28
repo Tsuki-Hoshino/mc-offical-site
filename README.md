@@ -1,242 +1,233 @@
 # MC Official Site Collector
 
-这是一个给 Minecraft Java 版服务器使用的“官网 + 运行状态采集器”项目。
+这是一个面向 Minecraft Java 版服务器的官网与运行状态采集器。仓库同时提供 PHP 网站、Fabric/Forge 模组、Paper 插件、部署模板和网站内的管理功能。
 
-它把采集器安装在 Minecraft 服务器里，定期读取服务器运行数据并通过 HTTPS 发到网站；网站再把数据展示给访客。项目不依赖 MCSM 等第三方面板，网站只读取自己收到的数据。
+生产环境的采集器通过 WSS 主动上报到网站，网站同时保留 HTTPS POST 作为兼容回退，并提供以下页面：
 
-适合的使用场景：你有一台 Minecraft 服务器，希望拥有一个可以放在自己域名下的官网，显示在线人数、假人数量、MSPT、CPU、内存、网络流量、玩家统计和历史图表。
+- 实时状态：在线玩家、假人、MSPT/TPS、Java 进程资源、主机资源、磁盘和网络指标。
+- 玩家统计：按玩家查看服务端统计数据。
+- 配方：浏览内置配方、搜索物品；编辑器支持站点管理员维护自定义配方。
+- 附魔计算：计算铁砧合并顺序、经验等级和惩罚等级。
+- 经纬度：登记机器位置、维度换算、说明和附件。
+- 计划表：解析 Litematica 投影，统计材料并协作认领。
+- 终端：超级管理员可通过 MCSManager Daemon 查看实例、控制台输出和实例文件。
 
-> 本文默认读者几乎没有 Linux、PHP 或 Git 经验。文中的 `SITE_DOMAIN`、`SITE_ROOT`、`DB_PASSWORD` 和 `SYNC_TOKEN` 都是部署变量，请按你的环境设置。
+仓库只包含源码、静态资源和配置模板，不包含数据库、运行时数据、密码、同步令牌、MCSManager 密钥或生产证书。
 
 ## 目录
 
-- [一、它是怎样工作的](#一它是怎样工作的)
-- [二、项目目录](#二项目目录)
-- [三、开始前要准备什么](#三开始前要准备什么)
-- [四、先在电脑上获取项目](#四先在电脑上获取项目)
-- [五、部署网站](#五部署网站)
-- [六、配置 Minecraft 采集器](#六配置-minecraft-采集器)
-- [七、构建采集器 JAR](#七构建采集器-jar)
-- [八、安装到服务器](#八安装到服务器)
-- [九、配置项详解](#九配置项详解)
-- [十、验证是否成功](#十验证是否成功)
-- [十一、日常维护与更新](#十一日常维护与更新)
-- [十二、常见问题](#十二常见问题)
-- [十三、安全建议](#十三安全建议)
-- [十四、开发者说明](#十四开发者说明)
+- [一、运行链路](#一运行链路)
+- [二、仓库目录](#二仓库目录)
+- [三、运行要求](#三运行要求)
+- [四、部署网站](#四部署网站)
+- [五、配置采集器](#五配置采集器)
+- [六、构建和安装采集器](#六构建和安装采集器)
+- [七、网站模块和权限](#七网站模块和权限)
+- [八、接口和数据](#八接口和数据)
+- [九、实时服务和终端](#九实时服务和终端)
+- [十、验证和维护](#十验证和维护)
+- [十一、开发说明](#十一开发说明)
 - [许可证](#许可证)
 
-## 一、它是怎样工作的
+## 一、运行链路
 
-完整链路如下：
+### 采集器到网站
 
-1. Minecraft 服务器加载采集器（Fabric 模组、Forge 模组或 Paper 插件）。
-2. 采集器读取游戏刻、玩家、Java 进程、主机和网络信息。
-3. 采集器每隔一段时间向 `https://你的域名/api/push.php` 发送 HTTPS POST，并在请求头中携带同步令牌。
-4. PHP API 验证令牌，把最新状态写入 `website/data/inbox/`；状态数据同时写入 MySQL 的 `server_metrics` 表。
-5. 浏览器访问网站时，页面通过 `api/latest.php` 和 `api/history.php` 获取数据。
+1. Fabric 模组、Forge 模组或 Paper 插件加载共用的 `collector/core` 逻辑。
+2. 采集器每秒执行一次采样任务，根据配置准备状态和玩家统计数据。
+3. 生产采集器连接 `wss://SITE_DOMAIN/ws/collector`，先发送 `{"action":"authenticate","token":"..."}` 完成同步令牌认证，再发送带 `id`、`type`、`payload` 的 JSON 信封。
+4. `website/ws/collector-server.php` 校验信封后保存最新快照到 `website/data/inbox/<type>.json.php`，并向采集端返回确认消息。
+5. `status` 信封会立即广播到 `wss://SITE_DOMAIN/ws/status`，同时转发给历史写入工作进程，由 `history_store_status()` 异步写入 `server_metrics`。
+6. WSS 暂时不可用时，采集器可回退到 `POST /api/push.php?type=status` 或 `POST /api/push.php?type=stats`。回退接口只保存最新快照，不直接写入历史表，并返回 `history_stored: false`。
+7. 状态页优先订阅 `wss://当前域名/ws/status`；连接失败后才轮询 `GET /api/latest.php?type=status`。两条读取路径都使用 `no-store`，避免缓存实时数据。
 
-采集器离线后，网站会在超过 `offlineAfterSeconds`（默认 15 秒）没有新数据时显示“服务器离线”。
+仓库中的 `website/ws/collector-server.php` 是 WSS 接收端，`website/api/push.php` 是 HTTPS 兼容回退端。公开采集器代码中的 `HttpUploader` 对应回退上传实现；生产部署使用的 WSS 采集器应与上述信封和认证协议保持一致。
 
-## 二、项目目录
+### 数据库
+
+网站各模块共用 `website/config/database.php` 中的 PDO MySQL 连接：
+
+- `deploy/sql/schema.sql` 提供 `server_metrics` 历史指标表。
+- 统一认证首次连接时创建 `users`、`audit_logs`。
+- 站点设置、配方、经纬度和计划表按模块初始化自己的表。
+
+数据库账号需要拥有应用运行所需的建表、读写和事务权限。生产环境应使用专用账号，不要让网站使用 MySQL `root`。
+
+## 二、仓库目录
 
 | 路径 | 用途 |
 | --- | --- |
-| `website/` | 要发布到 PHP 网站服务器的网页、图片、JavaScript 和 API。 |
-| `website/config/*.template` | 网站私密配置模板，复制后去掉 `.template` 才会生效。 |
-| `website/api/` | 接收采集器数据、读取最新数据和历史数据的 PHP 接口。 |
-| `website/data/` | 运行时数据目录，不能提交到 Git，也不能让访客直接下载。 |
-| `collector/` | 采集器的 Gradle 多模块源码。 |
-| `collector/core/` | Fabric、Forge、Paper 共用的采集逻辑。 |
-| `collector/fabric-*` | 对应 Minecraft 版本的 Fabric 模组。 |
-| `collector/forge-*` | 对应 Minecraft 版本的 Forge 模组。 |
-| `collector/paper/` | Paper/Spigot 插件。 |
-| `config/mc-official-site.toml.template` | Minecraft 服务器端采集器配置模板。 |
-| `deploy/` | Nginx、Apache、数据库建表和定期清理示例。 |
-| `scripts/publish-website.ps1` | Windows 上通过 SSH 发布网站的脚本。 |
-| `.github/workflows/build.yml` | GitHub Actions 自动测试并构建所有采集器。 |
+| `website/` | PHP 页面、HTTP API、JavaScript、样式和静态资源；部署时将其作为网站根目录。 |
+| `website/api/` | 采集器 Push、最新状态、历史指标和历史清理接口。 |
+| `website/config/*.template` | 私密数据库和同步配置模板；实际配置文件不能提交。 |
+| `website/统一认证/` | 共享 Session、用户、角色、CSRF、登录限流和审计。 |
+| `website/终端/` | MCSManager Daemon 客户端、终端页面和实例文件管理。 |
+| `website/计划表/` | Litematica 解析、材料统计、项目成员和认领。 |
+| `website/经纬度/` | 机器登记、坐标换算和附件管理。 |
+| `website/配方/` | 静态配方索引、数据库配方和搜索接口。 |
+| `website/状态/` | 实时状态页和历史图表页。 |
+| `collector/` | Gradle 多模块采集器源码。 |
+| `collector/core/` | Fabric、Forge、Paper 共用的 Java 采样、快照和 HTTPS 兼容上传逻辑。 |
+| `collector/fabric-*` | 各 Minecraft 版本的 Fabric 模组。 |
+| `collector/forge-*` | 各 Minecraft 版本的 Forge 模组。 |
+| `collector/paper/` | 通用 Paper/Spigot 插件。 |
+| `config/mc-official-site.toml.template` | Minecraft 服务端采集器配置模板。 |
+| `deploy/` | Nginx、Apache、cron 和历史表结构模板。 |
+| `scripts/publish-website.ps1` | Windows 上打包并通过 SSH/SCP/rsync 发布 `website/` 的脚本。 |
+| `.github/workflows/build.yml` | 按模块运行核心测试并构建采集器 JAR。 |
 
-## 三、开始前要准备什么
+`website/data/` 是运行时目录，不在仓库中提供。它用于保存 Push 快照、认证状态、上传附件、终端状态和配方缩略图，并被 `.gitignore` 排除。
+
+## 三、运行要求
 
 ### 网站服务器
 
-- 一个站点域名 `SITE_DOMAIN`，并把 DNS 的 A/AAAA 记录指向网站服务器。
-- Linux 服务器（Ubuntu、Debian 等均可）。
-- Nginx 或 Apache。
-- PHP 8.3 及 PHP-FPM，至少启用 `pdo_mysql`、`json`、`openssl`。
-- MySQL 8/MariaDB 等兼容 MySQL 的数据库。
-- 有效的 HTTPS 证书。采集器只接受 `https://` 地址；可以使用 Let's Encrypt。
-- 能够写入网站目录下的 `website/data/`，以及连接数据库。
+- Nginx 或 Apache，并启用 HTTPS。
+- PHP 8.1 或更高版本；生产环境建议使用 PHP 8.3/8.4。
+- PHP 扩展：PDO MySQL、JSON、OpenSSL、cURL、mbstring、zlib。
+- MySQL 8 或兼容版本。
+- PHP-FPM 用户可以写入 `website/data/`，但不应拥有整个网站目录的写权限。
 
 ### Minecraft 服务器
 
-- 已经可以正常启动的 Fabric、Forge 或 Paper 服务器。
-- 与服务器版本完全匹配的采集器 JAR。不要把 1.20.1 的模组放到 1.21.11。
-- 服务器进程可以访问你的 HTTPS 网站。
+- Fabric、Forge 或 Paper 服务端。
+- 与 Minecraft 版本和加载器匹配的采集器 JAR。
+- 能够访问网站的 HTTPS/WSS 地址；生产上报优先使用 WSS，HTTPS POST 仅作回退。
 
-### 构建环境（只在自己编译 JAR 时需要）
+### 构建环境
 
 - Git。
-- JDK 25（GitHub Actions 使用 Temurin JDK 25）。较新的 Minecraft 模组源码会限制到 Java 21，但用 JDK 25 构建最稳妥。
-- Windows 可以直接使用仓库内的 `collector/gradlew.bat`；Linux/macOS 使用 `collector/gradlew`。
+- JDK 25。部分模块的 Java 编译目标为 8 或 21，但仓库工作流使用 JDK 25 构建全部模块。
+- Windows 使用 `collector/gradlew.bat`；Linux/macOS 使用 `collector/gradlew`。
 
-## 四、先在电脑上获取项目
+## 四、部署网站
 
-如果你不会 Git，可以在 GitHub 项目页面点击 **Code → Download ZIP**，解压后得到项目文件夹。
+以下步骤使用 Linux 路径变量说明部署关系。实际域名、目录、PHP-FPM 用户和证书位置由部署者提供，不应写入仓库。
 
-如果已经安装 Git，在 PowerShell 或终端执行：
+### 1. 获取源码
 
 ```bash
-git clone <项目仓库地址>
+git clone https://github.com/Tsuki-Hoshino/mc-offical-site.git
 cd mc-offical-site
 ```
 
-后续命令都默认在项目根目录执行，也就是能看到 `website`、`collector` 和 `README.md` 的目录。
+### 2. 准备网站目录和私密配置
 
-## 五、部署网站
-
-下面是最小可用流程。域名、Linux 用户名和路径请按自己的服务器修改。
-
-### 1. 创建数据库和账号
-
-登录 MySQL 后创建一个专用数据库账号（不要使用 root 给网站连接）：
-
-```sql
-CREATE DATABASE mc_official_site CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'mc_official_site'@'localhost' IDENTIFIED BY '请换成很长的数据库密码';
-GRANT ALL PRIVILEGES ON mc_official_site.* TO 'mc_official_site'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-导入项目提供的表结构：
+网站根目录必须直接包含 `index.html`、`api/`、`assets/` 和 `config/`。不要将网站再套一层 `website/website/`。
 
 ```bash
-mysql -u mc_official_site -p mc_official_site < deploy/sql/schema.sql
-```
-
-这会创建 `server_metrics` 表，用于保存历史指标。若暂时不需要历史图表，网站仍可显示最新状态，但建议直接完成数据库配置。
-
-### 2. 上传网站文件
-
-把整个 `website/` 目录上传到服务器，例如：
-
-```text
-/var/www/mc-official-site/website/
-```
-
-网站根目录必须直接包含 `index.html`、`api/`、`assets/` 和 `config/`，不要多套一层 `website/website/`。
-
-### 3. 创建网站私密配置
-
-在服务器执行：
-
-```bash
-cd /var/www/mc-official-site/website
+cd website
 cp config/database.php.template config/database.php
 cp config/sync.php.template config/sync.php
-mkdir -p data/inbox
+mkdir -p data/inbox data/runtime data/uploads
 ```
 
-编辑 `config/database.php`，填写上一步的数据库信息。然后生成一个随机同步令牌，并同时写入网站和 Minecraft 服务器配置。令牌不需要是固定格式，例如可以在 Linux 上生成：
+`database.php` 支持以下环境变量：
+
+| 环境变量 | 用途 |
+| --- | --- |
+| `MC_SITE_DB_HOST` | MySQL 主机地址 |
+| `MC_SITE_DB_PORT` | MySQL 端口，默认 `3306` |
+| `MC_SITE_DB_NAME` | 数据库名，默认 `mc_official_site` |
+| `MC_SITE_DB_USER` | 网站数据库账号，默认 `mc_site_app` |
+| `MC_SITE_DB_PASSWORD` | 数据库密码 |
+
+`sync.php` 支持 `MC_SYNC_TOKEN`。也可以把令牌写入配置数组的 `token` 字段，但无论采用哪种方式都不能提交真实令牌。模板默认只接受 `status` 和 `stats` 两类 Push 数据，实际允许类型以服务器上的 `allowed_types` 为准。
+
+### 3. 初始化数据库
+
+由数据库管理员创建数据库和专用账号后，导入历史指标表：
 
 ```bash
-openssl rand -hex 32
+mysql -u "$MC_SITE_DB_USER" -p "$MC_SITE_DB_NAME" < deploy/sql/schema.sql
 ```
 
-把令牌填入 `config/sync.php` 的 `token`：
+统一认证、站点设置、配方、经纬度和计划表会在各模块首次连接数据库时检查并创建所需表。首次部署时应确认数据库账号具备相应权限。
 
-```php
-'token' => '这里填随机生成的长字符串',
-```
+### 4. 初始化第一个超级管理员
 
-也可以不把令牌写在文件里，改用环境变量 `MC_SYNC_TOKEN`。两种方式选一种即可；不要把真实令牌提交到 Git 或发到公开聊天中。
+统一认证只在用户表为空、且 `website/data/bootstrap-admin.json` 存在时导入第一个超级管理员。文件需要包含 `username` 和已经按认证核心格式生成的 `password_hash`；导入成功后代码会删除该文件。
 
-### 4. 修改站点名称和服务器地址
+该文件只能在服务器上短暂创建并限制权限，不能放进 Git、备份包或公开下载目录。已有用户表时不会重复导入。
 
-编辑 `website/assets/site-config.js`。最常用的设置都集中在文件开头：
+### 5. 配置站点和功能
 
-```javascript
-window.MCSiteConfig = {
-    siteName: 'Minecraft 生存服务器',
-    serverName: '生存服务器',
-    serverAddress: 'SERVER_ADDRESS',
-    editionLabel: 'MINECRAFT JAVA EDITION 1.21.11 FABRIC',
-    icpNumber: '',
-    policeNumber: '',
-    policeCode: '',
-    offlineAfterSeconds: 15
-};
-```
+页面加载 `/assets/site-config.php`，站点名称、首页标题、服务器地址、版本标签、离线判定时间、终端地址和功能开关由 `site_settings` 表提供，超级管理员可在 `/admin/` 修改。
 
-`siteName` 是页头和页脚名称，`serverName` 是首页标题，`serverAddress` 是玩家要复制的进服地址。没有备案信息时保持空字符串即可。`offlineAfterSeconds` 表示网站多久收不到新状态后显示离线，通常应大于 `upload_interval_seconds` 的数倍。
+可用功能开关及路径如下：
 
-当前页面使用纯色背景和 `MC` 文字图标。需要换成自己的图片时，把图片放进 `website/assets/`，再修改 `website/index.html` 和 `website/assets/site.css` 中对应的图标与背景样式。
+| 设置键 | 路径 |
+| --- | --- |
+| `status` | `/状态/` |
+| `stats` | `/统计数据/` |
+| `recipes` | `/配方/` |
+| `enchant` | `/附魔计算/` |
+| `machines` | `/经纬度/` |
+| `plans` | `/计划表/` |
 
-### 5. 配置 Nginx 或 Apache
+备案字段常量 `SITE_ICP_NUMBER`、`SITE_POLICE_NUMBER` 和 `SITE_POLICE_CODE` 默认为空；需要展示备案信息时只能由部署者在自己的环境中配置，不能把真实号码写入公开仓库。
 
-复制 `deploy/nginx.conf.template` 或 `deploy/apache-vhost.conf.template`，把 `SITE_DOMAIN`、网站根目录、证书路径和 PHP-FPM socket 改成实际值。
+### 6. 配置 Web 服务器
 
-Nginx 示例默认使用：
+根据服务器类型复制并修改：
 
-```text
-root /var/www/mc-official-site/website;
-fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-```
+- `deploy/nginx.conf.template`
+- `deploy/apache-vhost.conf.template`
 
-不同系统的 PHP-FPM socket 可能是 `php8.2-fpm.sock` 或其他名称，请用服务器实际文件名替换。配置完成后检查并重载：
+将模板中的 `SITE_DOMAIN`、网站根目录、证书路径和 PHP-FPM socket 替换为实际值。必须保留以下访问限制：
+
+- 禁止访问 `config/`、`data/`、`api/lib/`、`api/cron/` 和隐藏文件。
+- PHP 只执行实际存在的 `.php` 文件。
+- 网站和采集器之间始终使用 HTTPS/WSS；不得降级到明文 HTTP/WS。
+
+配置完成后由服务器管理员执行 Web 服务器自身的配置检查和重载。项目不会在 README 验证阶段代替管理员操作生产服务。
+
+## 五、配置采集器
+
+采集器首次启动会在 Minecraft 服务端的 `config/` 目录生成 `mc-official-site.toml`。也可以提前复制仓库模板：
 
 ```bash
-sudo nginx -t
-sudo systemctl reload nginx
+cp config/mc-official-site.toml.template "$MINECRAFT_SERVER_ROOT/config/mc-official-site.toml"
 ```
 
-配置中的安全规则会阻止访问 `config/`、`data/`、`api/lib/` 和 `api/cron/`。这些规则不要删除。
-
-### 6. 设置文件权限
-
-让 PHP-FPM 用户可以写入数据目录，但不要让整个网站目录都可写：
-
-```bash
-sudo chown -R root:root /var/www/mc-official-site/website
-sudo chown -R www-data:www-data /var/www/mc-official-site/website/data
-sudo chown root:www-data /var/www/mc-official-site/website/config/*.php
-sudo chmod 750 /var/www/mc-official-site/website/data
-sudo chmod 640 /var/www/mc-official-site/website/config/*.php
-```
-
-如果你的系统 PHP-FPM 用户不是 `www-data`，请替换为实际用户。
-
-### 7. （推荐）定期删除旧历史
-
-项目提供的 `deploy/mc-official-site-retention.cron.template` 会每天删除一年以前的记录。把路径改成实际路径后，复制到 `/etc/cron.d/mc-official-site-retention`，并确认 PHP CLI 路径正确：
-
-```text
-17 3 * * * www-data /usr/bin/php /var/www/mc-official-site/website/api/cron/prune-history.php >> /var/log/mc-official-site-retention.log 2>&1
-```
-
-## 六、配置 Minecraft 采集器
-
-采集器首次启动时会自动在服务器的 `config/` 目录生成 `mc-official-site.toml`。也可以提前复制模板：
-
-```bash
-cp config/mc-official-site.toml.template <你的服务器>/config/mc-official-site.toml
-```
-
-必须至少修改：
+至少配置：
 
 ```toml
 [endpoint]
 site_url = "https://SITE_DOMAIN"
-token = "SYNC_TOKEN"
+token = "MC_SYNC_TOKEN"
 ```
 
-`site_url` 必须以 `https://` 开头，不要填写 `/api/push.php`，程序会自动拼接接口地址。令牌多一个空格或少一个字符都会导致 401 未授权。
+`site_url` 必须是网站 HTTPS 根地址，不要附加 `/api/push.php` 或 `/ws/collector`。生产 WSS 客户端使用同一主机的 `wss://SITE_DOMAIN/ws/collector`，并用 `token` 完成 WebSocket 认证；WSS 不可用时才回退到 HTTPS POST。`token` 必须与网站的 `MC_WS_TOKEN` 或 `MC_SYNC_TOKEN`（以及服务器 `sync.php` 中的令牌）完全一致。
 
-修改配置后通常不需要重新编译 JAR。采集器会自动检测配置文件变化并重新加载；若没有生效，重启 Minecraft 服务器即可。
+可调整的配置分为四组：
 
-## 七、构建采集器 JAR
+| 配置项 | 作用 |
+| --- | --- |
+| `sample_interval_ticks` | 游戏刻采样间隔，程序限制为至少 1。 |
+| `upload_interval_seconds` | `status` 上传间隔，程序限制为至少 1 秒。 |
+| `stats_scan_interval_seconds` | 玩家统计扫描间隔，程序限制为至少 1 秒。 |
+| `sync_status` | 是否上传实时状态。 |
+| `sync_player_stats` | 是否扫描并上传玩家统计。 |
+| `collect_network` | 是否采集网络速率和累计流量。 |
+| `fake_class_keywords` | 判定假人的实体类关键词，使用逗号分隔。 |
+| `fake_display_prefixes` | 判定假人显示名的前缀，使用逗号分隔。 |
+| `connect_timeout_millis` | 公开 HTTPS 回退上传器建立连接的超时；生产 WSS 客户端应设置等效连接超时，程序限制为至少 1000 毫秒。 |
+| `read_timeout_millis` | 公开 HTTPS 回退上传器读取响应的超时；生产 WSS 客户端应设置等效确认超时，程序限制为至少 1000 毫秒。 |
 
-### 只构建一个版本（推荐）
+采集器检测配置文件的修改时间和大小，发现变化后会在运行中重新加载。上传失败和配置错误写入服务端 `config/mc-site-collector-errors.log`。
+
+## 六、构建和安装采集器
+
+### 支持的模块
+
+Fabric：`fabric-1.14.4`、`fabric-1.16.5`、`fabric-1.18.2`、`fabric-1.20.1`、`fabric-1.21.1`、`fabric-1.21.11`、`fabric-26.1`。
+
+Forge：`forge-1.14.4`、`forge-1.16.5`、`forge-1.18.2`、`forge-1.20.1`、`forge-1.21.1`、`forge-1.21.11`、`forge-26.1`。
+
+Paper：`paper`，编译时使用通用 Spigot API，适用于对应 Paper/Spigot 服务端。
+
+### 构建单个模块
 
 Windows PowerShell：
 
@@ -251,166 +242,129 @@ chmod +x collector/gradlew
 ./collector/gradlew -p collector -PonlyProject=fabric-1.21.11 :core:test :fabric-1.21.11:build --stacktrace
 ```
 
-把命令中的 `fabric-1.21.11` 换成你需要的模块。生成的 JAR 在：
+将命令中的模块名替换为目标模块。JAR 位于对应模块的 `build/libs/`。
 
-```text
-collector/fabric-1.21.11/build/libs/
-```
-
-### 构建全部版本
+### 构建全部模块
 
 ```bash
 ./collector/gradlew -p collector :core:test build --stacktrace
 ```
 
-全部版本构建时间较长，并且需要下载各版本 Minecraft、Fabric、Forge 或 Paper 依赖。网络不稳定时建议只构建一个模块，或直接下载 GitHub Actions 的构建产物。
+GitHub Actions 会按 `.github/workflows/build.yml` 的模块矩阵运行同样的测试和构建，并将每个模块的 JAR 上传为构建产物。
 
-### 支持的模块
+### 安装
 
-Fabric：`1.14.4`、`1.16.5`、`1.18.2`、`1.20.1`、`1.21.1`、`1.21.11`、`26.1`。
+- Fabric：将对应 JAR 放进服务端 `mods/`，同时安装匹配版本的 Fabric Loader 和 Fabric API。
+- Forge：将对应 JAR 放进服务端 `mods/`，不要与 Fabric Loader 混用。
+- Paper：将 `collector/paper/build/libs/` 中的 JAR 放进服务端 `plugins/`。
 
-Forge：`1.14.4`、`1.16.5`、`1.18.2`、`1.20.1`、`1.21.1`、`1.21.11`、`26.1`。
+安装或替换 JAR 前应由服务器管理员完成停服、备份和启动安排。项目文档不要求通过网站终端执行这些操作。
 
-Paper：`paper`（通用 Paper/Spigot 插件，插件声明的最低 API 版本为 1.14）。
+## 七、网站模块和权限
 
-## 八、安装到服务器
+统一认证使用唯一 Session 名 `mc_machine_session`，Cookie 设置为根路径、HttpOnly 和 SameSite=Strict，并根据 HTTPS 请求判断 Secure 属性。所有写接口都需要登录、角色、CSRF 和字段校验。
 
-- Fabric：将对应 JAR 放入服务器的 `mods/`，同时确保安装匹配版本的 Fabric Loader 和 Fabric API。
-- Forge：将对应 JAR 放入服务器的 `mods/`，不要混用 Fabric Loader。
-- Paper：将 `collector/paper/build/libs/` 中的 JAR 放入 `plugins/`。
+| 角色 | 权限 |
+| --- | --- |
+| 未登录访客 | 浏览首页、状态、统计、配方、附魔计算、经纬度和计划表公开内容。 |
+| `editor` | 使用需要站内认证的业务功能，例如计划表成员协作和经纬度登记；不能进入 `/admin/` 或管理账户。 |
+| `superadmin` | 站点设置、账户管理、自定义配方、终端以及所有超级管理员功能。 |
 
-安装前先停止服务器，复制一份存档和配置作为备份，再启动服务器。首次启动后检查 `config/mc-official-site.toml` 是否存在。
+计划表的项目成员还拥有项目级角色：`owner`、`admin`、`member`。项目所有者和项目管理员负责成员维护；材料认领、完成状态和投影导入由服务端按项目权限判断。
 
-采集器错误日志通常位于：
+配方编辑器支持有序和无序配方，图标由浏览器直接请求 `https://mcasset.cloud/` 资源，失败时使用文字缩写，不经过本站代理或缓存纹理。
 
-```text
-服务器目录/config/mc-site-collector-errors.log
-```
+## 八、接口和数据
 
-## 九、配置项详解
+### HTTP API
 
-| 配置项 | 作用 | 建议 |
+| 接口 | 方法 | 作用 |
 | --- | --- | --- |
-| `site_url` | 网站 HTTPS 根地址 | 必须是 `https://`，不要带 API 路径 |
-| `token` | API 鉴权令牌 | 与网站完全一致，使用长随机字符串 |
-| `sample_interval_ticks` | 每隔多少游戏刻采样一次 | `1` 最及时；性能紧张可调大 |
-| `upload_interval_seconds` | 状态上传间隔 | `1` 表示每秒一次；过小会增加请求量 |
-| `stats_scan_interval_seconds` | 玩家统计扫描间隔 | 通常 `10` 或 `30` 已足够 |
-| `sync_status` | 是否上传实时状态 | `true` 才会更新在线状态和历史指标 |
-| `sync_player_stats` | 是否上传玩家统计 | 不需要时可设为 `false` |
-| `collect_network` | 是否采集网络速率 | 不需要时可设为 `false` |
-| `fake_class_keywords` | 判定假人的实体类关键词，逗号分隔 | 默认 `fake,carpet` |
-| `fake_display_prefixes` | 判定假人显示名的前缀，逗号分隔 | 中文服可按实际名称修改 |
-| `connect_timeout_millis` | 建立 HTTPS 连接超时时间 | 默认 5000 毫秒 |
-| `read_timeout_millis` | 读取 API 响应超时时间 | 默认 8000 毫秒 |
+| `/api/push.php?type=status` | POST | WSS 不可用时的兼容回退；验证同步令牌并保存状态快照，不写历史表。 |
+| `/api/push.php?type=stats` | POST | WSS 不可用时的兼容回退；验证同步令牌并保存玩家统计快照。 |
+| `/api/latest.php?type=status` | GET | 返回经过公开字段过滤的最新状态。 |
+| `/api/latest.php?type=stats` | GET | 返回最新玩家统计快照。 |
+| `/api/history.php?metric=...` | GET | 查询 `server_metrics` 的聚合历史指标。 |
+| `/配方/api/search.php?q=...` | GET | 搜索静态和数据库配方。 |
 
-程序会把时间间隔限制为至少 1；网络超时限制为至少 1000 毫秒。
+WSS 接收端限制认证动作、信封字段、允许类型和最大消息体，并返回确认或错误消息。HTTPS Push 回退接口限制请求方法、令牌、JSON 格式、允许类型和最大请求体，并返回 `Cache-Control: no-store`。公开状态响应会移除 `remote_addr`，并只保留在线玩家对应的皮肤地址。
 
-## 十、验证是否成功
+历史接口支持 `mspt`、`process_cpu`、`process_memory`、`host_cpu`、`host_memory` 和 `network` 指标；查询失败时返回 `history_unavailable`，不会向浏览器输出数据库连接细节。
 
-1. 浏览器打开 `https://你的域名/`，确认首页能正常显示。
-2. 用浏览器打开 `https://你的域名/api/latest.php?type=status`。未收到数据时会返回 `not_found`，收到数据后应返回 JSON 且包含 `ok: true`。
-3. 检查 `website/data/inbox/status.json.php` 是否生成。该文件以 `.php` 结尾是为了防止被当作普通 JSON 直接下载。
-4. 查看 Minecraft 控制台和 `config/mc-site-collector-errors.log`，确认没有 401、404、500 或 SSL 错误。
-5. 等待几分钟后打开状态页和历史图表；历史图表依赖 MySQL 配置和 `server_metrics` 表。
+### 运行时文件
 
-可以用下面的命令模拟一次推送（请替换域名和令牌）：
+- `website/data/inbox/<type>.json.php`：最新 Push 快照，文件前缀会阻止被当作普通 JSON 直接下载。
+- `website/data/runtime/`：Workerman 进程日志和终端会话状态。
+- `website/data/uploads/`：经纬度模块的附件。
+- `website/data/thumbnails/`：管理员上传的配方 PNG 缩略图。
+
+这些目录必须位于 Web 根目录的受保护路径下，并且不进入 Git。
+
+## 九、实时服务和终端
+
+### Workerman 状态服务
+
+`website/ws/collector-server.php` 是 CLI 进程，提供两个 WebSocket 路径：
+
+- `/ws/status`：公开订阅最新状态和实时状态消息。
+- `/ws/collector`：生产采集器使用的 WSS 上报通道。连接后先用同步令牌认证，再接收带 `id`、`type`、`payload` 的 JSON 信封；`status` 记录会广播给公开订阅者，并转发给历史写入工作进程。
+
+该进程使用 Workerman 的 `vendor/autoload.php`。生产环境必须启动并保持该进程运行，且由 Nginx 或 Apache 将 HTTPS/WSS 请求转发到它；只有明确只使用 HTTPS 回退和页面轮询时才可以不启动。历史写入依赖同一进程的内部消息通道。
+
+### MCSManager 终端
+
+`/终端/` 和 `/终端/api.php` 仅允许 `superadmin`。后台保存的 `terminalUrl` 与 `terminalKey` 只在服务器端使用，永远不会下发给浏览器。终端客户端使用 Engine.IO v4 / Socket.IO v4 polling，与 Daemon 建立主会话和输出流会话。
+
+终端具备实例查看、控制台输出、命令输入、PTY 尺寸同步以及相对路径文件管理能力。它可以启动、停止、重启或强制终止实例，也可以读写、移动、删除和上传文件；这些都是生产操作，必须由管理员自行确认影响和回滚方案。
+
+## 十、验证和维护
+
+### 只读验证
+
+以下请求不会向网站或数据库写入业务数据：
 
 ```bash
-curl -i -X POST "https://${SITE_DOMAIN}/api/push.php?type=status" \
-  -H "Content-Type: application/json" \
-  -H "X-MC-Sync-Token: 你的令牌" \
-  -d '{"generated_at":"2026-01-01T00:00:00Z","runtime":{"mspt":10}}'
+curl -fsSI "$SITE_URL/"
+curl -fsS "$SITE_URL/api/latest.php?type=status"
+curl -fsS "$SITE_URL/api/latest.php?type=stats"
 ```
 
-正确时会返回 HTTP 200 和 `"ok":true`。这个测试会写入一条状态数据，生产环境测试后可删除对应历史记录。
+没有收到采集器数据时，`latest.php` 返回 `not_found` 属于正常状态。收到数据后应返回 JSON，并包含对应的 `type` 和 `payload`。历史查询只能在已配置数据库且存在历史记录时验证。
 
-## 十一、日常维护与更新
+不要使用 POST 模拟采集器请求来验证生产环境，因为该接口会写入 `website/data/inbox/`；也不要使用终端启动、停止、重启、强制终止实例或发送服务器命令进行测试。
 
-### 更新网页
+### 更新网站
 
-先备份 `website/config/` 和 `website/data/`，再上传新的 `website/` 内容。`scripts/publish-website.ps1` 会自动排除私密配置和数据目录，并在远程服务器创建部署前备份：
+网站是普通 PHP/静态文件目录，不需要前端构建。更新时保留服务器上的 `website/config/` 和 `website/data/`，再替换其余网站文件。`scripts/publish-website.ps1` 会排除私密配置和运行时数据，并依赖本机 `tar`、`ssh`、`scp` 以及远程 `rsync`。
 
-```powershell
-.\scripts\publish-website.ps1 `
-  -HostName $env:SITE_DOMAIN `
-  -UserName root `
-  -RemoteRoot /var/www/mc-official-site `
-  -IdentityFile C:\Users\你的用户名\.ssh\id_ed25519
-```
+### 历史清理
 
-该脚本需要本机有 `tar`、`ssh`、`scp`，远程服务器有 `rsync`。不使用脚本时，手动上传 `website/` 也可以。
-
-### 更新采集器
-
-1. 确认 Minecraft 版本和加载器没有变化。
-2. 下载或构建同名的新 JAR。
-3. 停服并备份 `mods/`、`plugins/`、`config/mc-official-site.toml`。
-4. 替换旧 JAR 后启动服务器。
-5. 查看日志并访问 API 验证数据。
+`deploy/mc-official-site-retention.cron.template` 仅供 CLI 定时任务调用，会删除 `server_metrics` 中早于一年的记录。修改路径、PHP CLI 路径和运行用户后，再由服务器管理员放入系统 cron。
 
 ### 备份
 
-至少备份以下内容：
+至少备份：
 
-- `website/config/database.php`
-- `website/config/sync.php`
-- `website/data/`
-- MySQL 数据库（例如 `mysqldump` 导出）
-- Minecraft 服务器的 `config/mc-official-site.toml`
+- `website/config/database.php` 和 `website/config/sync.php`；
+- `website/data/`；
+- MySQL 数据库；
+- Minecraft 服务端的 `config/mc-official-site.toml`、`mods/` 或 `plugins/`。
 
-## 十二、常见问题
+备份文件同样包含敏感信息，必须限制读取权限，不要上传到公开仓库。
 
-**网页能打开，但一直显示离线**：检查采集器是否安装了正确版本、`site_url` 是否为 HTTPS、令牌是否一致，并从服务器执行 `curl -I https://你的域名/` 测试网络和证书。
+## 十一、开发说明
 
-**API 返回 `401 unauthorized`**：请求没有带令牌或令牌拼写不一致。采集器使用 `X-MC-Sync-Token` 请求头。
-
-**API 返回 `503 token_not_configured`**：网站的 `config/sync.php` 尚未配置同步令牌，或环境变量 `MC_SYNC_TOKEN` 为空。
-
-**API 返回 `500` 或历史图表不可用**：检查 `config/database.php`、数据库账号权限、`pdo_mysql` 扩展和 `server_metrics` 表；同时查看 PHP-FPM 错误日志。
-
-**数据目录写入失败**：确认 PHP-FPM 用户对 `website/data/` 有写权限，且父目录存在。
-
-**构建时提示 Java 版本不对**：安装 JDK 25，并确认 `java -version` 和 `JAVA_HOME` 指向它。不要只安装 JRE，构建需要 JDK。
-
-**Fabric/Forge 启动崩溃**：确认 Minecraft、Loader、API 和采集器模块的版本完全匹配。Forge 和 Fabric 的 JAR 不能互换。
-
-**历史数据越来越大**：启用 cron 清理任务；默认脚本删除一年以前的记录。需要更短保留期时，请自行修改 SQL 的时间间隔。
-
-## 十三、安全建议
-
-- 全站强制 HTTPS，不要为了“先试试”改成 HTTP；采集器会拒绝 HTTP。
-- 同步令牌使用至少 32 字节随机值，网站和服务器分别限制文件权限。
-- 不要把 `website/config/`、`website/data/`、数据库密码或真实令牌提交到 Git。
-- 保留 Nginx/Apache 中禁止访问私密目录的规则。
-- 数据库使用专用账号，不要让 PHP 使用 MySQL root。
-- 定期更新操作系统、PHP、Web 服务器和 Minecraft Loader，并保留可恢复的备份。
-- 生产环境关闭 PHP 详细错误输出，把错误写入日志。
-
-## 十四、开发者说明
-
-运行核心单元测试：
+核心测试和构建命令：
 
 ```bash
 ./collector/gradlew -p collector :core:test
-```
-
-只检查并构建指定模块：
-
-```bash
 ./collector/gradlew -p collector -PonlyProject=paper :core:test :paper:build --stacktrace
 ```
 
-GitHub Actions 工作流会在推送到 `main`、创建 `v*` 标签、Pull Request 或手动触发时，使用 JDK 25 构建全部 Fabric、Forge 和 Paper 模块。构建完成后，可在 Actions 运行页面的 Artifacts 中下载对应 JAR。
+网站脚本为原生 JavaScript、PHP 和 HTML。修改静态资源后必须同步更新页面中的资源版本号；页面脚本需要同时兼容普通加载、PJAX 进入和销毁生命周期。
 
-网站是普通文件目录，开发时可以用 PHP 内置服务器临时查看页面：
-
-```bash
-php -S localhost:8080 -t website
-```
-
-但真实推送、HTTPS、PHP-FPM 和 MySQL 仍应在正式服务器上验证。
+可以使用 `node --check` 检查 JavaScript 语法；PHP 语法检查应在部署环境使用 `php -l` 执行。未安装 PHP 或 JDK 25 的机器不能据此宣称网站或所有采集器构建通过。
 
 ## 许可证
 
-本项目使用 MIT License，详见 [LICENSE](LICENSE)。
+根目录源码使用 MIT License，详见 [LICENSE](LICENSE)。`website/计划表/` 内保留 LiteTrack 的 GPL-3.0 许可证和 `LICENSE` 文件；使用该目录代码时还必须遵守其许可证要求。
