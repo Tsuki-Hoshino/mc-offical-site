@@ -4,10 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../统一认证/auth.php';
 require_once __DIR__ . '/../计划表/db.php';
 
-if (!auth_is_authenticated()) {
-    header('Location: ' . auth_login_url('/个人资料/'), true, 302);
-    exit;
-}
+header('Cache-Control: no-store, private');
+auth_require();
 
 $user = auth_current_user();
 $csrf = auth_csrf_token();
@@ -48,6 +46,7 @@ $roleLabel = ($user['role'] ?? '') === 'superadmin' ? '超级管理员' : '编�
 <header class="topbar"><div class="shell"><a class="brand" href="/">Minecraft 生存服务器</a><nav class="nav" aria-label="站点导航"><a href="/">首页</a><a href="/状态/">实时状态</a><a href="/统计数据/">玩家统计</a><a href="/配方/">配方</a><a href="/附魔计算/">附魔计算</a><a href="/经纬度/">经纬度</a><a href="/计划表/">计划表</a><?php if (auth_is_superadmin()): ?><a class="nav-account" href="/admin/">后台</a><?php endif; ?><a href="/个人资料/" aria-current="page">个人资料</a><form class="machine-logout" method="post" action="/统一认证/logout.php"><input type="hidden" name="next" value="/"><input type="hidden" name="csrf_token" value="<?= profile_h($csrf) ?>"><button type="submit">退出</button></form></nav></div></header>
 <main class="shell plans-main">
     <a class="plan-back" href="/计划表/">← 返回计划表</a>
+    <?php if (($_GET['password_changed'] ?? '') === '1'): ?><section class="plan-empty" role="status">密码已修改。</section><?php endif; ?>
     <?php if (!empty($profileError)): ?><section class="plan-empty" role="alert"><?= profile_h($profileError) ?></section><?php endif; ?>
     <section class="profile-head">
         <img src="/计划表/asset.php?kind=avatar&amp;name=<?= rawurlencode($mc) ?>" alt="">
@@ -65,6 +64,11 @@ $roleLabel = ($user['role'] ?? '') === 'superadmin' ? '超级管理员' : '编�
             <p class="plan-form-error" data-error></p>
             <button class="plans-primary" type="submit">保存资料</button>
         </form>
+        <section class="plan-about">
+            <h2>账户安全</h2>
+            <p>定期更新站内密码，修改时需要验证当前密码。</p>
+            <a class="plans-primary" href="/个人资料/password.php">修改密码</a>
+        </section>
         <section class="plan-about profile-stats">
             <h2>协作统计</h2>
             <div>

@@ -30,7 +30,7 @@ $users = auth_db()->query(
 $logs = auth_db()->query(
     'SELECT audit_logs.*, users.username
      FROM audit_logs LEFT JOIN users ON users.id = audit_logs.user_id
-     ORDER BY audit_logs.id DESC LIMIT 100'
+     ORDER BY audit_logs.id DESC LIMIT 1000'
 )->fetchAll();
 $csrf = auth_csrf_token();
 $message = trim((string) ($_GET['message'] ?? ''));
@@ -70,7 +70,7 @@ $message = trim((string) ($_GET['message'] ?? ''));
         </div>
     </section>
     <section class="machine-admin-section">
-        <div class="machine-section-title"><h2>最近操作</h2><span>最近 100 条</span></div>
+        <div class="machine-section-title"><h2>最近操作</h2><span>最近 1000 条</span></div>
         <div class="machine-admin-table audit">
             <table><thead><tr><th>时间</th><th>账户</th><th>事件</th><th>来源 IP</th><th>对象</th></tr></thead>
             <tbody><?php foreach ($logs as $log): ?><tr>

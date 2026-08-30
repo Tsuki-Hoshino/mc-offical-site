@@ -19,7 +19,12 @@ if ($requestedNext === null && !empty($_SERVER['HTTP_REFERER'])) {
 }
 $next = auth_normalize_next($requestedNext, '/');
 $_SESSION['auth_return_to'] = $next;
-if (auth_is_authenticated()) {
+if (auth_has_valid_session()) {
+    if (auth_password_change_required()) {
+        $_SESSION['auth_return_to'] = $next;
+        header('Location: /个人资料/password.php', true, 302);
+        exit;
+    }
     unset($_SESSION['auth_return_to']);
     header('Location: ' . $next, true, 302);
     exit;
@@ -44,8 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $databaseReady) {
         if ($blockedFor > 0) {
             $error = '尝试次数过多，请稍后再试。';
         } elseif (auth_login($username, (string) ($_POST['password'] ?? ''))) {
-            unset($_SESSION['auth_return_to']);
-            header('Location: ' . $next, true, 302);
+            if (auth_password_change_required()) {
+                $_SESSION['auth_return_to'] = $next;
+                header('Location: /个人资料/password.php', true, 302);
+            } else {
+                unset($_SESSION['auth_return_to']);
+                header('Location: ' . $next, true, 302);
+            }
             exit;
         } else {
             $blockedFor = auth_rate_state($username)['blocked_for'];

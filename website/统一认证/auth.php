@@ -82,7 +82,7 @@ function auth_current_user(): ?array
     if ($loadedId === $userId) {
         return $user;
     }
-    $stmt = auth_db()->prepare('SELECT id, username, role, enabled FROM users WHERE id = :id');
+    $stmt = auth_db()->prepare('SELECT id, username, role, enabled, last_login_at FROM users WHERE id = :id');
     $stmt->execute(['id' => $userId]);
     $record = $stmt->fetch();
     $loadedId = $userId;
@@ -93,7 +93,7 @@ function auth_current_user(): ?array
     return $user;
 }
 
-function auth_is_authenticated(): bool
+function auth_has_valid_session(): bool
 {
     auth_session_start();
     $authenticatedAt = (int) ($_SESSION['machine_authenticated_at'] ?? 0);
@@ -102,6 +102,17 @@ function auth_is_authenticated(): bool
         return false;
     }
     return auth_current_user() !== null;
+}
+
+function auth_password_change_required(): bool
+{
+    $user = auth_current_user();
+    return $user !== null && empty($user['last_login_at']);
+}
+
+function auth_is_authenticated(): bool
+{
+    return auth_has_valid_session() && !auth_password_change_required();
 }
 
 function auth_is_superadmin(): bool
@@ -176,7 +187,13 @@ function auth_login_url(string $next = '/'): string
 
 function auth_require(): void
 {
-    if (auth_is_authenticated()) {
+    if (auth_has_valid_session()) {
+        if (auth_password_change_required()) {
+            $_SESSION['auth_return_to'] = auth_current_request();
+            header('Cache-Control: no-store, private');
+            header('Location: /个人资料/password.php', true, 302);
+            exit;
+        }
         return;
     }
     header('Cache-Control: no-store, private');
@@ -318,15 +335,26 @@ function auth_login(string $username, string $password): bool
     session_regenerate_id(true);
     $_SESSION['machine_user_id'] = (int) $user['id'];
     $_SESSION['machine_authenticated_at'] = time();
-    $updates = ['last_login_at' => date('Y-m-d H:i:s'), 'id' => (int) $user['id']];
-    $sql = 'UPDATE users SET last_login_at = :last_login_at';
+    $updates = ['id' => (int) $user['id']];
+    $assignments = [];
+    if (!empty($user['last_login_at'])) {
+        $assignments[] = 'last_login_at = :last_login_at';
+        $updates['last_login_at'] = date('Y-m-d H:i:s');
+    }
     if (auth_password_needs_rehash((string) $user['password_hash'])) {
-        $sql .= ', password_hash = :password_hash, updated_at = :updated_at';
+        $assignments[] = 'password_hash = :password_hash';
+        $assignments[] = 'updated_at = :updated_at';
         $updates['password_hash'] = auth_hash_password($password);
         $updates['updated_at'] = date('Y-m-d H:i:s');
+        $updates['current_password_hash'] = (string) $user['password_hash'];
     }
-    $sql .= ' WHERE id = :id';
-    auth_db()->prepare($sql)->execute($updates);
+    if ($assignments) {
+        $sql = 'UPDATE users SET ' . implode(', ', $assignments) . ' WHERE id = :id';
+        if (isset($updates['current_password_hash'])) {
+            $sql .= ' AND password_hash = :current_password_hash';
+        }
+        auth_db()->prepare($sql)->execute($updates);
+    }
     auth_audit('login_success');
     return true;
 }
