@@ -230,8 +230,10 @@ Fabric 1.14.4 至 1.21.11 的旧模块、全部 Forge 模块和 Paper 插件已�
 Windows PowerShell：
 
 ```powershell
-.\collector\gradlew.bat -p collector -PonlyProject=fabric-26.1 :core:test :fabric-26.1:build --stacktrace
+.\collector\gradlew.bat -p collector "-PonlyProject=fabric-26.1" :core:test ":fabric-26.1:build" --stacktrace
 ```
+
+PowerShell 向批处理脚本传参时会把参数里的 `.` 当成分隔符，含点号的模块名必须加引号，否则脚本收到的是被截断的 `fabric-26`。
 
 Linux/macOS：
 
