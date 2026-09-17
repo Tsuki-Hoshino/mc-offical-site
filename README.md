@@ -367,4 +367,8 @@ curl -fsS "$SITE_URL/api/latest.php?type=stats"
 
 ## 许可证
 
-根目录源码使用 MIT License，详见 [LICENSE](LICENSE)。`website/计划表/` 内保留 LiteTrack 的 GPL-3.0 许可证和 `LICENSE` 文件；使用该目录代码时还必须遵守其许可证要求。
+本项目以 GNU General Public License v3.0 授权，完整文本见根目录 [LICENSE](LICENSE)。
+
+`website/计划表/` 内的代码重构自 LiteTrack，继续使用其 GPL-3.0 许可证；该目录自带 `LICENSE` 文件，使用这部分代码时必须一并遵守该许可证。
+
+`website/assets/` 目录内的第三方库（Chart.js、xterm.js、Lenis 等）保留各自的许可证，不随本项目改为 GPLv3；例如 Chart.js 在其文件头声明为 MIT License。这些第三方许可证声明不得修改或删除。
