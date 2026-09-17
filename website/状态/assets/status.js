@@ -269,7 +269,7 @@
             renderPlayers();
             document.body.classList.remove('server-offline');
             const telemetry = data.telemetry || {};
-            setText('telemetry-origin', telemetry.transport === 'wss_push' ? '数据来源：服务端采集器 WSS' : (telemetry.transport === 'https_push' ? '数据来源：服务端采集器 HTTPS Push' : '数据来源：服务端采集器'));
+            setText('telemetry-origin', telemetry.transport === 'wss' ? '数据来源：服务端采集器 WSS' : (telemetry.transport === 'https_push' ? '数据来源：服务端采集器 HTTPS Push' : '数据来源：服务端采集器'));
             setText('telemetry-mode', '实时上报');
             setText('updated', time(record.received_at));
             setText('mspt', runtime.mspt == null ? '-' : Number(runtime.mspt).toFixed(1) + ' ms');

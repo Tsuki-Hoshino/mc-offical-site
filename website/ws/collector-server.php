@@ -59,6 +59,17 @@ $historyWorker->onMessage = static function (TcpConnection $connection, string $
 };
 
 $historyConnection = null;
+$storeHistoryFallback = static function (array $record) use ($log): void {
+    try {
+        history_store_status(
+            is_array($record['payload'] ?? null) ? $record['payload'] : [],
+            (string) ($record['received_at'] ?? gmdate('c'))
+        );
+    } catch (Throwable $error) {
+        error_log('WebSocket history fallback failed: ' . $error->getMessage());
+        $log('history_fallback_failed ' . $error->getMessage());
+    }
+};
 $connectionStates = new WeakMap();
 $websocketWorker = new Worker($websocketListen);
 $websocketWorker->name = 'mc-site-collector-ws';
@@ -123,7 +134,7 @@ $websocketWorker->onClose = static function (TcpConnection $connection) use (&$c
     $log('close mode=' . (is_array($closingState) ? ($closingState['mode'] ?? '?') : '?'));
     unset($connectionStates[$connection]);
 };
-$websocketWorker->onMessage = static function (TcpConnection $connection, string $message) use ($websocketWorker, &$historyConnection, &$connectionStates, $log): void {
+$websocketWorker->onMessage = static function (TcpConnection $connection, string $message) use ($websocketWorker, &$historyConnection, &$connectionStates, $storeHistoryFallback, $log): void {
     $state = $connectionStates[$connection] ?? null;
     if (!is_array($state) || $state['mode'] === 'public') {
         $connection->close(websocket_error('read_only'));
@@ -171,8 +182,17 @@ $websocketWorker->onMessage = static function (TcpConnection $connection, string
             $log('status_received id=' . $id . ' received_at=' . $record['received_at'] . ' public_clients=' . $publicCount);
         }
         $historyMessage = websocket_history_message($record);
-        if ($historyMessage !== null && $historyConnection instanceof AsyncTcpConnection) {
-            $historyConnection->send($historyMessage);
+        if ($historyMessage !== null) {
+            $historySent = false;
+            if ($historyConnection instanceof AsyncTcpConnection) {
+                $historySent = $historyConnection->send($historyMessage) !== false;
+                if (!$historySent) {
+                    $historyConnection = null;
+                }
+            }
+            if (!$historySent) {
+                $storeHistoryFallback($record);
+            }
         }
     } catch (InvalidArgumentException $error) {
         $connection->send(websocket_error($error->getMessage(), $id));
