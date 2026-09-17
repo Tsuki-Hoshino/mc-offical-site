@@ -35,13 +35,13 @@
 
 1. Fabric 模组加载共用的 `collector/core` 逻辑。
 2. 采集器每秒执行一次采样任务，根据配置准备状态和玩家统计数据。
-3. 生产采集器连接 `wss://SITE_DOMAIN/ws/collector`，先发送 `{"action":"authenticate","token":"..."}` 完成同步令牌认证，再发送带 `id`、`type`、`payload` 的 JSON 信封。
+3. 采集器连接 `wss://SITE_DOMAIN/ws/collector`，先发送 `{"action":"authenticate","token":"..."}` 完成同步令牌认证，再发送带 `id`、`type`、`payload` 的 JSON 信封。
 4. `website/ws/collector-server.php` 校验信封后保存最新快照到 `website/data/inbox/<type>.json.php`，并向采集端返回确认消息。
 5. `status` 信封会立即广播到 `wss://SITE_DOMAIN/ws/status`，同时转发给历史写入工作进程，由 `history_store_status()` 异步写入 `server_metrics`。
 6. WSS 暂时不可用时，采集器可回退到 `POST /api/push.php?type=status` 或 `POST /api/push.php?type=stats`。回退接口只保存最新快照，不直接写入历史表，并返回 `history_stored: false`。
 7. 状态页优先订阅 `wss://当前域名/ws/status`；连接失败后才轮询 `GET /api/latest.php?type=status`。两条读取路径都使用 `no-store`，避免缓存实时数据。
 
-仓库中的 `website/ws/collector-server.php` 是 WSS 接收端，`website/api/push.php` 是 HTTPS 兼容回退端。公开采集器代码中的 `HttpUploader` 对应回退上传实现；生产部署使用的 WSS 采集器应与上述信封和认证协议保持一致。
+仓库中的 `website/ws/collector-server.php` 是 WSS 接收端，`website/api/push.php` 是 HTTPS 兼容回退端。采集器侧由 `collector/core` 的 `WsUploader` 实现 WSS 上报、`HttpUploader` 实现 HTTPS 回退，`TransportUploader` 负责在两者之间选择，并把本帧真实使用的通道写入 `telemetry.transport`。
 
 ### 数据库
 
@@ -196,7 +196,7 @@ site_url = "https://SITE_DOMAIN"
 token = "MC_SYNC_TOKEN"
 ```
 
-`site_url` 必须是网站 HTTPS 根地址，不要附加 `/api/push.php` 或 `/ws/collector`。生产 WSS 客户端使用同一主机的 `wss://SITE_DOMAIN/ws/collector`，并用 `token` 完成 WebSocket 认证；WSS 不可用时才回退到 HTTPS POST。`token` 必须与网站的 `MC_WS_TOKEN` 或 `MC_SYNC_TOKEN`（以及服务器 `sync.php` 中的令牌）完全一致。
+`site_url` 必须是网站 HTTPS 根地址，不要附加 `/api/push.php` 或 `/ws/collector`。采集器使用同一主机的 `wss://SITE_DOMAIN/ws/collector`，并用 `token` 完成 WebSocket 认证；WSS 不可用时回退到 HTTPS POST，并在 `wss_retry_interval_seconds` 之后重新尝试 WSS。`token` 必须与网站的 `MC_WS_TOKEN` 或 `MC_SYNC_TOKEN`（以及服务器 `sync.php` 中的令牌）完全一致。
 
 可调整的配置分为四组：
 
@@ -205,13 +205,15 @@ token = "MC_SYNC_TOKEN"
 | `sample_interval_ticks` | 游戏刻采样间隔，程序限制为至少 1。 |
 | `upload_interval_seconds` | `status` 上报间隔，默认 5 秒，程序限制为至少 1 秒。 |
 | `stats_scan_interval_seconds` | 玩家统计扫描间隔，程序限制为至少 1 秒。 |
+| `wss_enabled` | 是否优先使用 WSS 通道，默认开启；关闭后只走 HTTPS Push 回退。 |
+| `wss_retry_interval_seconds` | WSS 失败后等待多少秒再重试，默认 30，程序限制为至少 1 秒。 |
 | `sync_status` | 是否上传实时状态。 |
 | `sync_player_stats` | 是否扫描并上传玩家统计。 |
 | `collect_network` | 是否采集网络速率和累计流量。 |
 | `fake_class_keywords` | 判定假人的实体类关键词，使用逗号分隔。 |
 | `fake_display_prefixes` | 判定假人显示名的前缀，使用逗号分隔。 |
-| `connect_timeout_millis` | 公开 HTTPS 回退上传器建立连接的超时；生产 WSS 客户端应设置等效连接超时，程序限制为至少 1000 毫秒。 |
-| `read_timeout_millis` | 公开 HTTPS 回退上传器读取响应的超时；生产 WSS 客户端应设置等效确认超时，程序限制为至少 1000 毫秒。 |
+| `connect_timeout_millis` | WSS 与 HTTPS 通道建立连接的超时，程序限制为至少 1000 毫秒。 |
+| `read_timeout_millis` | WSS 等待服务端确认、HTTPS 等待响应的超时，程序限制为至少 1000 毫秒。 |
 
 采集器检测配置文件的修改时间和大小，发现变化后会在运行中重新加载。上传失败和配置错误写入服务端 `config/mc-site-collector-errors.log`。
 

@@ -54,4 +54,68 @@ public class CollectorConfigTest {
         config.token = "secret";
         assertFalse(config.isConfigured());
     }
+
+    @Test
+    public void usesFiveSecondUploadIntervalAndEnabledWssByDefault() {
+        CollectorConfig config = new CollectorConfig();
+
+        assertEquals(5, config.uploadIntervalSeconds);
+        assertTrue(config.wssEnabled);
+        assertEquals(30, config.wssRetryIntervalSeconds);
+    }
+
+    @Test
+    public void readsTransportSettingsAndAppliesThemToTheRunningConfig() throws Exception {
+        Path directory = Files.createTempDirectory("mc-site-transport-config");
+        Path path = directory.resolve("config").resolve("mc-official-site.toml");
+        CollectorConfig.load(path);
+
+        Files.write(path, Arrays.asList(
+            "[endpoint]",
+            "site_url = \"https://telemetry.invalid\"",
+            "token = \"secret\"",
+            "[transport]",
+            "wss_enabled = false",
+            "wss_retry_interval_seconds = 12"
+        ), StandardCharsets.UTF_8);
+
+        CollectorConfig loaded = CollectorConfig.load(path);
+        assertFalse(loaded.wssEnabled);
+        assertEquals(12, loaded.wssRetryIntervalSeconds);
+
+        CollectorConfig running = new CollectorConfig();
+        running.apply(loaded);
+        assertFalse(running.wssEnabled);
+        assertEquals(12, running.wssRetryIntervalSeconds);
+    }
+
+    @Test
+    public void clampsWssRetryIntervalToAtLeastOneSecond() throws Exception {
+        Path directory = Files.createTempDirectory("mc-site-retry-config");
+        Path path = directory.resolve("config").resolve("mc-official-site.toml");
+        CollectorConfig.load(path);
+
+        Files.write(path, Arrays.asList(
+            "[endpoint]",
+            "site_url = \"https://telemetry.invalid\"",
+            "token = \"secret\"",
+            "[transport]",
+            "wss_retry_interval_seconds = 0"
+        ), StandardCharsets.UTF_8);
+
+        assertEquals(1, CollectorConfig.load(path).wssRetryIntervalSeconds);
+    }
+
+    @Test
+    public void writesTransportDefaultsIntoGeneratedTemplate() throws Exception {
+        Path directory = Files.createTempDirectory("mc-site-template");
+        Path path = directory.resolve("config").resolve("mc-official-site.toml");
+
+        CollectorConfig.load(path);
+
+        String template = Files.readString(path, StandardCharsets.UTF_8);
+        assertTrue(template.contains("upload_interval_seconds = 5"));
+        assertTrue(template.contains("wss_enabled = true"));
+        assertTrue(template.contains("wss_retry_interval_seconds = 30"));
+    }
 }

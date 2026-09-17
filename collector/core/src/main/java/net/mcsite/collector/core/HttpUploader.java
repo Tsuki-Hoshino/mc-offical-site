@@ -18,7 +18,9 @@ import java.time.Duration;
  * 关闭并从 KeepAliveCache 中移除，于是每次上报都要重建一次连接；换用 HttpClient 之后不再需要
  * 这类手工干预，也不必调整 {@code http.keepAlive.timeout} 之类的全局系统属性。
  */
-public final class HttpUploader {
+public final class HttpUploader implements AutoCloseable {
+    public static final String TRANSPORT_NAME = "https_push";
+
     private final CollectorConfig config;
     private HttpClient client;
     private String clientSignature = "";
@@ -52,6 +54,19 @@ public final class HttpUploader {
     }
 
     /**
+     * 释放连接池。停机时会走到这里；关闭之后如果还需要上报，会按当时的配置重建客户端。
+     */
+    @Override
+    public synchronized void close() {
+        HttpClient current = client;
+        client = null;
+        clientSignature = "";
+        if (current != null) {
+            current.close();
+        }
+    }
+
+    /**
      * 配置会被热更新，站点地址、令牌与超时参与客户端或请求的构造，因此签名变化时重建客户端，
      * 避免继续沿用旧端点与旧超时；重建前释放旧实例持有的连接和线程。
      */
@@ -65,6 +80,9 @@ public final class HttpUploader {
         if (client == null) {
             client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(config.connectTimeoutMillis))
+                // 回退通道是每帧一次的请求-响应，用不上 HTTP/2 的多路复用；显式走 HTTP/1.1
+                // 可以避免明文连接上多余的 h2c 升级协商，并让连接池按 keep-alive 稳定复用。
+                .version(HttpClient.Version.HTTP_1_1)
                 .build();
             clientSignature = signature;
         }

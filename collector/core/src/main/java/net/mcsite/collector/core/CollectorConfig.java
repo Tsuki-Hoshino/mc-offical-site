@@ -15,6 +15,8 @@ public final class CollectorConfig {
     public volatile int statsScanIntervalSeconds = 1;
     public volatile int connectTimeoutMillis = 5000;
     public volatile int readTimeoutMillis = 8000;
+    public volatile boolean wssEnabled = true;
+    public volatile int wssRetryIntervalSeconds = 30;
     public volatile boolean syncStatus = true;
     public volatile boolean syncPlayerStats = true;
     public volatile boolean collectNetwork = true;
@@ -47,6 +49,7 @@ public final class CollectorConfig {
         config.statsScanIntervalSeconds = Math.max(1, config.statsScanIntervalSeconds);
         config.connectTimeoutMillis = Math.max(1000, config.connectTimeoutMillis);
         config.readTimeoutMillis = Math.max(1000, config.readTimeoutMillis);
+        config.wssRetryIntervalSeconds = Math.max(1, config.wssRetryIntervalSeconds);
         return config;
     }
 
@@ -58,6 +61,8 @@ public final class CollectorConfig {
         statsScanIntervalSeconds = next.statsScanIntervalSeconds;
         connectTimeoutMillis = next.connectTimeoutMillis;
         readTimeoutMillis = next.readTimeoutMillis;
+        wssEnabled = next.wssEnabled;
+        wssRetryIntervalSeconds = next.wssRetryIntervalSeconds;
         syncStatus = next.syncStatus;
         syncPlayerStats = next.syncPlayerStats;
         collectNetwork = next.collectNetwork;
@@ -79,6 +84,8 @@ public final class CollectorConfig {
             else if ("stats_scan_interval_seconds".equals(key)) statsScanIntervalSeconds = Integer.parseInt(value);
             else if ("connect_timeout_millis".equals(key)) connectTimeoutMillis = Integer.parseInt(value);
             else if ("read_timeout_millis".equals(key)) readTimeoutMillis = Integer.parseInt(value);
+            else if ("wss_enabled".equals(key)) wssEnabled = Boolean.parseBoolean(value);
+            else if ("wss_retry_interval_seconds".equals(key)) wssRetryIntervalSeconds = Integer.parseInt(value);
             else if ("sync_status".equals(key)) syncStatus = Boolean.parseBoolean(value);
             else if ("sync_player_stats".equals(key)) syncPlayerStats = Boolean.parseBoolean(value);
             else if ("collect_network".equals(key)) collectNetwork = Boolean.parseBoolean(value);
@@ -103,6 +110,12 @@ public final class CollectorConfig {
             "[endpoint]",
             "site_url = \"" + siteUrl + "\"",
             "token = \"\"",
+            "",
+            "[transport]",
+            "# 优先通过 WSS 上报；关闭后只使用 HTTPS Push 回退通道。",
+            "wss_enabled = true",
+            "# WSS 失败后等待多少秒再重试，避免每一帧都重新握手。",
+            "wss_retry_interval_seconds = 30",
             "",
             "[timing]",
             "# 1 means sample every game tick. Uploads remain batched.",

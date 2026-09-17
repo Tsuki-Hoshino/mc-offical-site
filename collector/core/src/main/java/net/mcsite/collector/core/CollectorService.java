@@ -27,7 +27,7 @@ public final class CollectorService {
     private final Path errorLog;
     private final Path configPath;
     private final CollectorConfig config;
-    private final HttpUploader uploader;
+    private final TransportUploader uploader;
     private final StatsScanner statsScanner;
     private final RuntimeMetrics runtimeMetrics = new RuntimeMetrics();
     private final TickSampler tickSampler = new TickSampler();
@@ -45,7 +45,7 @@ public final class CollectorService {
         this.errorLog = configDirectory.resolve("mc-site-collector-errors.log");
         this.configPath = configDirectory.resolve("mc-official-site.toml");
         this.config = config;
-        this.uploader = new HttpUploader(config);
+        this.uploader = new TransportUploader(config);
         this.statsScanner = new StatsScanner(gameDirectory, configDirectory);
     }
 
@@ -92,6 +92,7 @@ public final class CollectorService {
             executor.shutdownNow();
             executor = null;
         }
+        uploader.close();
         snapshot = ServerSnapshot.OFFLINE;
         onlineSince.clear();
     }
@@ -172,7 +173,7 @@ public final class CollectorService {
 
         JsonObject telemetry = new JsonObject();
         telemetry.addProperty("producer", "mc_official_site_collector");
-        telemetry.addProperty("transport", "https_push");
+        // transport 由 TransportUploader 在发送前写入，以反映本帧真实使用的通道。
 
         JsonObject payload = new JsonObject();
         payload.addProperty("generated_at", Instant.now().toString());
