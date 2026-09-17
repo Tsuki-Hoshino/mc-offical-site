@@ -1,7 +1,0 @@
-name: MCOfficialSiteCollector
-version: 1.0.0
-main: net.mcsite.collector.paper.PaperCollectorPlugin
-api-version: '1.14'
-load: STARTUP
-authors: ["Open Source Contributors"]
-description: 将服务器实时状态与原版玩家统计安全同步到网站。

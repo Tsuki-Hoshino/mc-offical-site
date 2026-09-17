@@ -1,6 +1,6 @@
 # MC Official Site Collector
 
-这是一个面向 Minecraft Java 版服务器的官网与运行状态采集器。仓库同时提供 PHP 网站、Fabric/Forge 模组、Paper 插件、部署模板和网站内的管理功能。
+这是一个面向 Minecraft Java 版服务器的官网与运行状态采集器。仓库同时提供 PHP 网站、Fabric 模组、部署模板和网站内的管理功能。
 
 生产环境的采集器通过 WSS 主动上报到网站，网站同时保留 HTTPS POST 作为兼容回退，并提供以下页面：
 
@@ -33,7 +33,7 @@
 
 ### 采集器到网站
 
-1. Fabric 模组、Forge 模组或 Paper 插件加载共用的 `collector/core` 逻辑。
+1. Fabric 模组加载共用的 `collector/core` 逻辑。
 2. 采集器每秒执行一次采样任务，根据配置准备状态和玩家统计数据。
 3. 生产采集器连接 `wss://SITE_DOMAIN/ws/collector`，先发送 `{"action":"authenticate","token":"..."}` 完成同步令牌认证，再发送带 `id`、`type`、`payload` 的 JSON 信封。
 4. `website/ws/collector-server.php` 校验信封后保存最新快照到 `website/data/inbox/<type>.json.php`，并向采集端返回确认消息。
@@ -67,10 +67,8 @@
 | `website/配方/` | 静态配方索引、数据库配方和搜索接口。 |
 | `website/状态/` | 实时状态页和历史图表页。 |
 | `collector/` | Gradle 多模块采集器源码。 |
-| `collector/core/` | Fabric、Forge、Paper 共用的 Java 采样、快照和 HTTPS 兼容上传逻辑。 |
-| `collector/fabric-*` | 各 Minecraft 版本的 Fabric 模组。 |
-| `collector/forge-*` | 各 Minecraft 版本的 Forge 模组。 |
-| `collector/paper/` | 通用 Paper/Spigot 插件。 |
+| `collector/core/` | 采样、快照、WSS 上报与 HTTPS 兼容上传逻辑，由 Fabric 模组共用。 |
+| `collector/fabric-26.1/` | 面向 Minecraft 26.1 的 Fabric 模组。 |
 | `config/mc-official-site.toml.template` | Minecraft 服务端采集器配置模板。 |
 | `deploy/` | Nginx、Apache、cron 和历史表结构模板。 |
 | `scripts/publish-website.ps1` | Windows 上打包并通过 SSH/SCP/rsync 发布 `website/` 的脚本。 |
@@ -90,14 +88,14 @@
 
 ### Minecraft 服务器
 
-- Fabric、Forge 或 Paper 服务端。
+- 运行 Minecraft 26.1 的 Fabric 服务端，并安装 Fabric Loader 0.19.3 及以上版本与 Fabric API。
 - 与 Minecraft 版本和加载器匹配的采集器 JAR。
 - 能够访问网站的 HTTPS/WSS 地址；生产上报优先使用 WSS，HTTPS POST 仅作回退。
 
 ### 构建环境
 
 - Git。
-- JDK 25。部分模块的 Java 编译目标为 8 或 21，但仓库工作流使用 JDK 25 构建全部模块。
+- JDK 25。`collector/core` 与 `collector/fabric-26.1` 的编译目标均为 Java 25。
 - Windows 使用 `collector/gradlew.bat`；Linux/macOS 使用 `collector/gradlew`。
 
 ## 四、部署网站
@@ -221,42 +219,32 @@ token = "MC_SYNC_TOKEN"
 
 ### 支持的模块
 
-Fabric：`fabric-1.14.4`、`fabric-1.16.5`、`fabric-1.18.2`、`fabric-1.20.1`、`fabric-1.21.1`、`fabric-1.21.11`、`fabric-26.1`。
+目前只维护 `fabric-26.1` 一个模块，面向 Minecraft 26.1 与 Java 25。
 
-Forge：`forge-1.14.4`、`forge-1.16.5`、`forge-1.18.2`、`forge-1.20.1`、`forge-1.21.1`、`forge-1.21.11`、`forge-26.1`。
+Fabric 1.14.4 至 1.21.11 的旧模块、全部 Forge 模块和 Paper 插件已经移除：它们需要各自的旧版工具链和 JDK，维护成本远高于实际使用量。需要旧版本支持时，请从 Git 历史中取回对应模块源码后自行维护，并注意 `collector/core` 现在使用 Java 25 语法与标准库，回移时需要一并调整。
 
-Paper：`paper`，编译时使用通用 Spigot API，适用于对应 Paper/Spigot 服务端。
-
-### 构建单个模块
+### 构建模块
 
 Windows PowerShell：
 
 ```powershell
-.\collector\gradlew.bat -p collector -PonlyProject=fabric-1.21.11 :core:test :fabric-1.21.11:build --stacktrace
+.\collector\gradlew.bat -p collector -PonlyProject=fabric-26.1 :core:test :fabric-26.1:build --stacktrace
 ```
 
 Linux/macOS：
 
 ```bash
 chmod +x collector/gradlew
-./collector/gradlew -p collector -PonlyProject=fabric-1.21.11 :core:test :fabric-1.21.11:build --stacktrace
+./collector/gradlew -p collector -PonlyProject=fabric-26.1 :core:test :fabric-26.1:build --stacktrace
 ```
 
-将命令中的模块名替换为目标模块。JAR 位于对应模块的 `build/libs/`。
+当前仓库只包含 `fabric-26.1` 一个模块，省略 `-PonlyProject` 时构建的是同一个模块。JAR 位于 `collector/fabric-26.1/build/libs/`。
 
-### 构建全部模块
-
-```bash
-./collector/gradlew -p collector :core:test build --stacktrace
-```
-
-GitHub Actions 会按 `.github/workflows/build.yml` 的模块矩阵运行同样的测试和构建，并将每个模块的 JAR 上传为构建产物。
+GitHub Actions 会按 `.github/workflows/build.yml` 的模块矩阵运行同样的测试和构建，并将 JAR 上传为构建产物。
 
 ### 安装
 
-- Fabric：将对应 JAR 放进服务端 `mods/`，同时安装匹配版本的 Fabric Loader 和 Fabric API。
-- Forge：将对应 JAR 放进服务端 `mods/`，不要与 Fabric Loader 混用。
-- Paper：将 `collector/paper/build/libs/` 中的 JAR 放进服务端 `plugins/`。
+将 `collector/fabric-26.1/build/libs/` 中的 JAR 放进服务端 `mods/`，同时安装匹配版本的 Fabric Loader 和 Fabric API。
 
 安装或替换 JAR 前应由服务器管理员完成停服、备份和启动安排。项目文档不要求通过网站终端执行这些操作。
 
@@ -358,7 +346,7 @@ curl -fsS "$SITE_URL/api/latest.php?type=stats"
 
 ```bash
 ./collector/gradlew -p collector :core:test
-./collector/gradlew -p collector -PonlyProject=paper :core:test :paper:build --stacktrace
+./collector/gradlew -p collector -PonlyProject=fabric-26.1 :core:test :fabric-26.1:build --stacktrace
 ```
 
 网站脚本为原生 JavaScript、PHP 和 HTML。修改静态资源后必须同步更新页面中的资源版本号；页面脚本需要同时兼容普通加载、PJAX 进入和销毁生命周期。

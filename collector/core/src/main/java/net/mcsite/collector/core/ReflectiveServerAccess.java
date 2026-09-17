@@ -38,25 +38,6 @@ public final class ReflectiveServerAccess {
         return new ServerSnapshot(true, readMotd(gameDirectory), result);
     }
 
-    public static Object currentForgeServer() {
-        String[] classes = {
-            "net.minecraftforge.server.ServerLifecycleHooks",
-            "net.minecraftforge.fml.server.ServerLifecycleHooks"
-        };
-        for (String className : classes) {
-            try {
-                Class<?> type = Class.forName(className);
-                Method method = type.getMethod("getCurrentServer");
-                Object server = method.invoke(null);
-                if (server != null) {
-                    return server;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
-    }
-
     private static String readMotd(Path gameDirectory) {
         try {
             for (String line : Files.readAllLines(gameDirectory.resolve("server.properties"), StandardCharsets.UTF_8)) {
