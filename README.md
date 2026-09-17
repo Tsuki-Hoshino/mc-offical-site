@@ -203,7 +203,7 @@ token = "MC_SYNC_TOKEN"
 | 配置项 | 作用 |
 | --- | --- |
 | `sample_interval_ticks` | 游戏刻采样间隔，程序限制为至少 1。 |
-| `upload_interval_seconds` | `status` 上传间隔，程序限制为至少 1 秒。 |
+| `upload_interval_seconds` | `status` 上报间隔，默认 5 秒，程序限制为至少 1 秒。 |
 | `stats_scan_interval_seconds` | 玩家统计扫描间隔，程序限制为至少 1 秒。 |
 | `sync_status` | 是否上传实时状态。 |
 | `sync_player_stats` | 是否扫描并上传玩家统计。 |

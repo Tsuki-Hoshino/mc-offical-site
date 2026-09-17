@@ -11,7 +11,7 @@ public final class CollectorConfig {
     public volatile String siteUrl = "";
     public volatile String token = "";
     public volatile int sampleIntervalTicks = 1;
-    public volatile int uploadIntervalSeconds = 1;
+    public volatile int uploadIntervalSeconds = 5;
     public volatile int statsScanIntervalSeconds = 1;
     public volatile int connectTimeoutMillis = 5000;
     public volatile int readTimeoutMillis = 8000;
@@ -107,7 +107,7 @@ public final class CollectorConfig {
             "[timing]",
             "# 1 means sample every game tick. Uploads remain batched.",
             "sample_interval_ticks = 1",
-            "upload_interval_seconds = 1",
+            "upload_interval_seconds = 5",
             "stats_scan_interval_seconds = 1",
             "",
             "[features]",
