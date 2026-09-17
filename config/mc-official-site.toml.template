@@ -3,10 +3,16 @@
 site_url = ""
 token = ""
 
+[transport]
+# 优先通过 WSS 上报；关闭后只使用 HTTPS Push 回退通道。
+wss_enabled = true
+# WSS 失败后等待多少秒再重试，避免每一帧都重新握手。
+wss_retry_interval_seconds = 30
+
 [timing]
 # 1 表示每个 Game Tick 采样一次，网络上传仍按 upload_interval_seconds 合并发送。
 sample_interval_ticks = 1
-upload_interval_seconds = 1
+upload_interval_seconds = 5
 stats_scan_interval_seconds = 1
 
 [features]

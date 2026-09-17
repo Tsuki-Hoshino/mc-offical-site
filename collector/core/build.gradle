@@ -5,15 +5,15 @@ plugins {
 dependencies {
     compileOnly 'com.google.code.gson:gson:2.10.1'
     testImplementation 'junit:junit:4.13.2'
-    testRuntimeOnly 'com.google.code.gson:gson:2.10.1'
+    // 单元测试要直接解析协议消息，因此 gson 需要进入测试编译类路径，而不只是运行时。
+    testImplementation 'com.google.code.gson:gson:2.10.1'
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 8
+    options.release = 25
 }
